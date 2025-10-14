@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState , useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,11 +9,26 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { saveSettings, getSettings } from "@/lib/storage"
 import { Settings, Bell, DollarSign, Shield, Save } from "lucide-react"
+
+interface SettingsState {
+  gymName: string
+  adminEmail: string
+  alertDays: number
+  monthlyPrice: number
+  quarterlyPrice: number
+  yearlyPrice: number
+  emailNotifications: boolean
+  smsNotifications: boolean
+  autoRenewal: boolean
+  memberLimit: number
+}
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  const [settings, setSettings] = useState({
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [settings, setSettings] = useState<SettingsState>({
     gymName: "FitLife Gym",
     adminEmail: "admin@gym.com",
     alertDays: 30,
@@ -26,21 +41,52 @@ export default function SettingsPage() {
     memberLimit: 500,
   })
 
-  const handleSave = () => {
-    // In a real app, this would save to backend
-    toast({
-      title: "Settings Saved",
-      description: "Your gym settings have been updated successfully.",
-    })
-  }
-
-  const handleInputChange = (field: string, value: string | number | boolean) => {
+  const handleInputChange = (field: keyof SettingsState, value: string | number | boolean) => {
     setSettings((prev) => ({ ...prev, [field]: value }))
   }
 
+  const handleSave = async () => {
+    try {
+      await saveSettings(settings)
+      toast({
+        title: "Settings Saved",
+        description: "Your gym settings have been updated successfully.",
+        variant:"default",
+      })
+      setShowSuccessModal(true);
+      console.log(settings)
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Try again.",
+        variant: "destructive",
+      })
+    }
+  }
+  
+  // Optionally, load settings on mount:
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const storedSettings = await getSettings()
+      if (storedSettings) setSettings(storedSettings)
+    }
+    fetchSettings()
+  }, [])
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {showSuccessModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
+      <h3 className="text-lg font-bold mb-4">Settings Updated</h3>
+      <p className="text-sm mb-4">Your gym settings have been successfully saved.</p>
+      <Button onClick={() => setShowSuccessModal(false)} className="w-full">
+        Close
+      </Button>
+    </div>
+  </div>
+)}
+
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
         <p className="text-muted-foreground mt-2">Configure your gym management system preferences</p>
@@ -51,8 +97,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              General Settings
+              <Settings className="w-5 h-5" /> General Settings
             </CardTitle>
             <CardDescription>Basic gym information and configuration</CardDescription>
           </CardHeader>
@@ -80,7 +125,7 @@ export default function SettingsPage() {
                 id="memberLimit"
                 type="number"
                 value={settings.memberLimit}
-                onChange={(e) => handleInputChange("memberLimit", Number.parseInt(e.target.value))}
+                onChange={(e) => handleInputChange("memberLimit", Number(e.target.value))}
               />
             </div>
           </CardContent>
@@ -90,8 +135,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5" />
-              Notification Settings
+              <Bell className="w-5 h-5" /> Notification Settings
             </CardTitle>
             <CardDescription>Configure alert and notification preferences</CardDescription>
           </CardHeader>
@@ -102,7 +146,7 @@ export default function SettingsPage() {
                 id="alertDays"
                 type="number"
                 value={settings.alertDays}
-                onChange={(e) => handleInputChange("alertDays", Number.parseInt(e.target.value))}
+                onChange={(e) => handleInputChange("alertDays", Number(e.target.value))}
               />
             </div>
             <Separator />
@@ -133,8 +177,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Pricing Settings
+              <DollarSign className="w-5 h-5" /> Pricing Settings
             </CardTitle>
             <CardDescription>Configure membership pricing tiers</CardDescription>
           </CardHeader>
@@ -145,7 +188,7 @@ export default function SettingsPage() {
                 id="monthlyPrice"
                 type="number"
                 value={settings.monthlyPrice}
-                onChange={(e) => handleInputChange("monthlyPrice", Number.parseInt(e.target.value))}
+                onChange={(e) => handleInputChange("monthlyPrice", Number(e.target.value))}
               />
             </div>
             <div className="space-y-2">
@@ -154,7 +197,7 @@ export default function SettingsPage() {
                 id="quarterlyPrice"
                 type="number"
                 value={settings.quarterlyPrice}
-                onChange={(e) => handleInputChange("quarterlyPrice", Number.parseInt(e.target.value))}
+                onChange={(e) => handleInputChange("quarterlyPrice", Number(e.target.value))}
               />
             </div>
             <div className="space-y-2">
@@ -163,7 +206,7 @@ export default function SettingsPage() {
                 id="yearlyPrice"
                 type="number"
                 value={settings.yearlyPrice}
-                onChange={(e) => handleInputChange("yearlyPrice", Number.parseInt(e.target.value))}
+                onChange={(e) => handleInputChange("yearlyPrice", Number(e.target.value))}
               />
             </div>
           </CardContent>
@@ -173,8 +216,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              System Settings
+              <Shield className="w-5 h-5" /> System Settings
             </CardTitle>
             <CardDescription>Advanced system configuration options</CardDescription>
           </CardHeader>

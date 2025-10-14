@@ -19,8 +19,8 @@ export function MembershipTracking() {
     loadMembers()
   }, [])
 
-  const loadMembers = () => {
-    const allMembers = getMembers()
+  const loadMembers = async () => {
+    const allMembers = await getMembers()
     setMembers(allMembers)
   }
 

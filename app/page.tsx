@@ -2,8 +2,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, UserPlus, BarChart3, Bell, Shield, Calendar, TrendingUp, Settings } from "lucide-react"
+import AuthGate from "@/components/auth-gate"
 
-export default function HomePage() {
+function HomeContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -163,5 +164,13 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <AuthGate>
+      <HomeContent />
+    </AuthGate>
   )
 }

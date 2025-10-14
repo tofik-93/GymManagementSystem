@@ -24,12 +24,13 @@ export default function ReportsPage() {
     loadReportData()
   }, [])
 
-  const loadReportData = () => {
-    const allMembers = getMembers()
-    const dashboardStats = getDashboardStats()
+  const loadReportData = async () => {
+    const allMembers = await getMembers()
+    const dashboardStats = await getDashboardStats()
     setMembers(allMembers)
     setStats(dashboardStats)
   }
+  
 
   const refreshReports = async () => {
     setIsRefreshing(true)

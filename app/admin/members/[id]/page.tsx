@@ -21,22 +21,34 @@ export default function MemberProfilePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const memberId = params.id as string
-    const members = getMembers()
-    const foundMember = members.find((m) => m.id === memberId)
-
-    if (foundMember) {
-      setMember(foundMember)
-    } else {
-      toast({
-        title: "Member Not Found",
-        description: "The requested member could not be found.",
-        variant: "destructive",
-      })
-      router.push("/admin/members")
-    }
-    setLoading(false)
-  }, [params.id, router, toast])
+    const fetchMember = async () => {
+      setLoading(true);
+  
+      try {
+        const memberId = params.id as string;
+        const members = await getMembers();
+        const foundMember = members.find((m) => m.id === memberId);
+  
+        if (foundMember) {
+          setMember(foundMember);
+        } else {
+          toast({
+            title: "Member Not Found",
+            description: "The requested member could not be found.",
+            variant: "destructive",
+          });
+          router.push("/admin/members");
+        }
+      } catch (err) {
+        console.error("Error fetching member:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchMember();
+  }, [params.id, router, toast]);
+  
 
   const renewMembership = () => {
     if (!member) return

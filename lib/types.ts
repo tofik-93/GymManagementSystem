@@ -16,7 +16,18 @@ export interface Member {
   createdAt: string
   updatedAt: string
 }
-
+export interface GymSettings {
+  gymName: string
+  adminEmail: string
+  alertDays: number
+  monthlyPrice: number
+  quarterlyPrice: number
+  yearlyPrice: number
+  emailNotifications: boolean
+  smsNotifications: boolean
+  autoRenewal: boolean
+  memberLimit: number
+}
 export interface MembershipAlert {
   id: string
   memberId: string
@@ -25,6 +36,7 @@ export interface MembershipAlert {
   daysRemaining: number
   membershipEndDate: string
   createdAt: string
+ 
 }
 
 export interface Admin {
@@ -33,6 +45,8 @@ export interface Admin {
   email: string
   role: "admin" | "manager"
   createdAt: string
+  password: string
+  gymId : string
 }
 
 export interface DashboardStats {

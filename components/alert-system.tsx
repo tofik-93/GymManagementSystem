@@ -22,9 +22,9 @@ export function AlertSystem() {
     return () => clearInterval(interval)
   }, [])
 
-  const loadAlerts = () => {
+  const loadAlerts = async () => {
     updateMembershipAlerts()
-    const currentAlerts = getAlerts()
+    const currentAlerts = await getAlerts()
     setAlerts(currentAlerts)
   }
 

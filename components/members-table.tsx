@@ -11,7 +11,7 @@ import { getMembers, deleteMember } from "@/lib/storage"
 import type { Member } from "@/lib/types"
 import { Search, Edit, Trash2, Phone, Mail, Calendar, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
+import { MemberEditModal } from "./edit-member"
 export function MembersTable() {
   const [members, setMembers] = useState<Member[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -19,18 +19,17 @@ export function MembersTable() {
   const { toast } = useToast()
 
   useEffect(() => {
-    const loadMembers = () => {
-      const allMembers = getMembers()
+    const loadMembers = async () => {
+      const allMembers = await getMembers()
       setMembers(allMembers)
       setFilteredMembers(allMembers)
     }
-
+  
     loadMembers()
-    // Refresh members every 30 seconds
     const interval = setInterval(loadMembers, 30000)
     return () => clearInterval(interval)
   }, [])
-
+  
   useEffect(() => {
     const filtered = members.filter(
       (member) =>
@@ -51,6 +50,20 @@ export function MembersTable() {
       })
     }
   }
+  const [editingMember, setEditingMember] = useState<Member | null>(null)
+const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
+const handleEdit = (member: Member) => {
+  console.log(member)
+  setEditingMember(member)
+  setIsEditModalOpen(true)
+}
+
+const handleMemberUpdated = (updated: Member) => {
+  setMembers((prev) =>
+    prev.map((m) => (m.id === updated.id ? updated : m))
+  )
+}
 
   const getMembershipStatus = (member: Member) => {
     const today = new Date()
@@ -149,9 +162,10 @@ export function MembersTable() {
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(member)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -168,6 +182,17 @@ export function MembersTable() {
           )}
         </div>
       </CardContent>
+      {editingMember && (
+  <MemberEditModal
+    member={editingMember}
+    open={isEditModalOpen}
+    onClose={() => setIsEditModalOpen(false)}
+    onMemberUpdated={handleMemberUpdated}
+  />
+)}
+
+
     </Card>
+    
   )
 }

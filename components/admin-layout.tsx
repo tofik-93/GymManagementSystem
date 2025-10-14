@@ -4,7 +4,8 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { logout } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +20,7 @@ interface AdminLayoutProps {
 export function AdminLayout({ children, alertCount = 0 }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
   const navigation = [
     {
@@ -102,7 +104,14 @@ export function AdminLayout({ children, alertCount = 0 }: AdminLayoutProps) {
 
         {/* Logout */}
         <div className="mt-auto">
-          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              logout()
+              router.push("/login")
+            }}
+          >
             <LogOut className="h-5 w-5 mr-3" />
             Logout
           </Button>

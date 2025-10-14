@@ -14,13 +14,15 @@ export default function AdminLayoutWrapper({
   const [alertCount, setAlertCount] = useState(0)
 
   useEffect(() => {
-    const updateAlerts = () => {
-      updateMembershipAlerts()
-      const alerts = getAlerts()
-      const criticalAlerts = alerts.filter((alert) => alert.alertType === "expired" || alert.daysRemaining <= 7)
+    const updateAlerts = async () => {
+      await updateMembershipAlerts()
+      const alerts = await getAlerts()
+      const criticalAlerts = alerts.filter(
+        (alert) => alert.alertType === "expired" || alert.daysRemaining <= 7
+      )
       setAlertCount(criticalAlerts.length)
     }
-
+  
     updateAlerts()
     const interval = setInterval(updateAlerts, 60000) // Update every minute
     return () => clearInterval(interval)
