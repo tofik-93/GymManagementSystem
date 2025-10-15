@@ -89,8 +89,46 @@ export const saveMember = async (member: Member, photoFile?: File): Promise<void
     updatedAt: new Date().toISOString(),
   });
 
-  await updateMembershipAlerts();
+  await updateSingleMembershipAlert(member);
 };
+const updateSingleMembershipAlert = async (member: Member): Promise<void> => {
+  const gymId = getGymId();
+  const alertsRef = ref(rtdb, `gyms/${gymId}/alerts/${member.id}`);
+  const today = new Date();
+  const endDate = new Date(member.membershipEndDate);
+  const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+  let alert: MembershipAlert | null = null;
+
+  if (daysRemaining <= 30 && daysRemaining >= 0) {
+    alert = {
+      id: `alert-${member.id}`,
+      memberId: member.id,
+      memberName: member.name,
+      alertType: "expiring",
+      daysRemaining,
+      membershipEndDate: member.membershipEndDate,
+      createdAt: new Date().toISOString(),
+    };
+  } else if (daysRemaining < 0) {
+    alert = {
+      id: `alert-${member.id}`,
+      memberId: member.id,
+      memberName: member.name,
+      alertType: "expired",
+      daysRemaining,
+      membershipEndDate: member.membershipEndDate,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  if (alert) {
+    await set(alertsRef, alert);
+  } else {
+    await remove(alertsRef);
+  }
+};
+
 export const updateMember = async (memberId: string, updates: Partial<Member>, photoFile?: File): Promise<void> => {
   const gymId = getGymId();
   const memberRef = ref(rtdb, `/gyms/${gymId}/members/${memberId}`);
@@ -117,7 +155,6 @@ export const updateMember = async (memberId: string, updates: Partial<Member>, p
   };
 
   await update(memberRef, updateData);
-  await updateMembershipAlerts();
 };
 
 export const deleteMember = async (memberId: string): Promise<void> => {

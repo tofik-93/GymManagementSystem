@@ -63,7 +63,7 @@ export function MemberEditModal({ member, open, onClose, onMemberUpdated }: Memb
   const handleSave = async () => {
     if (!formData) return
     try {
-        await updateMember(formData.id, formData)
+      await updateMember(formData.id, formData)
 
         // trigger success modal instead of toast
         setShowSuccess(true)
@@ -170,13 +170,28 @@ export function MemberEditModal({ member, open, onClose, onMemberUpdated }: Memb
 
 
       </DialogHeader>
-      <p className="text-gray-600 mb-4">
-      <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-label="Success">
-  <title>Success</title>
-  <circle cx="12" cy="12" r="12" fill="#16a34a" />
-  <path d="M7.5 12.5l2.5 2.5 6-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>{formData.name}'s profile has been updated successfully.
-      </p>
+      <p className="flex items-center text-gray-600 mb-4">
+  <svg
+    width="40"
+    height="40"
+    viewBox="0 0 24 24"
+    role="img"
+    aria-label="Success"
+    className="mr-2 flex-shrink-0"
+  >
+    <circle cx="12" cy="12" r="12" fill="#16a34a" />
+    <path
+      d="M7.5 12.5l2.5 2.5 6-7"
+      fill="none"
+      stroke="#fff"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+  {formData.name}'s profile has been updated successfully.
+</p>
+
       <DialogFooter>
         <Button onClick={() => setShowSuccess(false)}>OK</Button>
       </DialogFooter>

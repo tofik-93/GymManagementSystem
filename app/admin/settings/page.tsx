@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { saveSettings, getSettings } from "@/lib/storage"
-import { Settings, Bell, DollarSign, Shield, Save } from "lucide-react"
+import { Settings, Bell, DollarSign, Shield, Save, Key } from "lucide-react"
 
 interface SettingsState {
   gymName: string
@@ -28,6 +28,11 @@ interface SettingsState {
 export default function SettingsPage() {
   const { toast } = useToast()
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showNewPasswordFields, setShowNewPasswordFields] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [settings, setSettings] = useState<SettingsState>({
     gymName: "FitLife Gym",
     adminEmail: "admin@gym.com",
@@ -54,7 +59,6 @@ export default function SettingsPage() {
         variant:"default",
       })
       setShowSuccessModal(true);
-      console.log(settings)
     } catch {
       toast({
         title: "Error",
@@ -63,7 +67,45 @@ export default function SettingsPage() {
       })
     }
   }
-  
+
+  const handlePasswordChange = () => {
+    // TODO: Replace this with actual backend password validation
+    const correctPassword = "admin123" // Example current password
+    if (!showNewPasswordFields) {
+      if (currentPassword !== correctPassword) {
+        toast({
+          title: "Error",
+          description: "Current password is incorrect",
+          variant: "destructive",
+        })
+        return
+      }
+      setShowNewPasswordFields(true)
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New password and confirm password do not match",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Simulate password change success
+    toast({
+      title: "Success",
+      description: "Password changed successfully",
+      variant: "default",
+    })
+    setShowPasswordModal(false)
+    setShowNewPasswordFields(false)
+    setCurrentPassword("")
+    setNewPassword("")
+    setConfirmPassword("")
+  }
+
   // Optionally, load settings on mount:
   useEffect(() => {
     const fetchSettings = async () => {
@@ -75,17 +117,67 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Settings saved success modal */}
       {showSuccessModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-    <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
-      <h3 className="text-lg font-bold mb-4">Settings Updated</h3>
-      <p className="text-sm mb-4">Your gym settings have been successfully saved.</p>
-      <Button onClick={() => setShowSuccessModal(false)} className="w-full">
-        Close
-      </Button>
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
+            <h3 className="text-lg font-bold mb-4">Settings Updated</h3>
+            <p className="text-sm mb-4">Your gym settings have been successfully saved.</p>
+            <Button onClick={() => setShowSuccessModal(false)} className="w-full">
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Change password modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
+            <h3 className="text-lg font-bold mb-4">Change Password</h3>
+            {!showNewPasswordFields && (
+              <>
+                <Label>Current Password</Label>
+                <Input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+              </>
+            )}
+            {showNewPasswordFields && (
+              <>
+                <Label>New Password</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <Label>Confirm Password</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </>
+            )}
+            <div className="flex justify-end mt-4 gap-2">
+              <Button variant="outline" onClick={() => {
+                setShowPasswordModal(false)
+                setShowNewPasswordFields(false)
+                setCurrentPassword("")
+                setNewPassword("")
+                setConfirmPassword("")
+              }}>
+                Cancel
+              </Button>
+              <Button onClick={handlePasswordChange}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
@@ -244,11 +336,15 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} className="w-full sm:w-auto">
+      {/* Save & Change Password Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button onClick={handleSave} className="w-full sm:w-auto flex items-center">
           <Save className="w-4 h-4 mr-2" />
           Save Settings
+        </Button>
+        <Button onClick={() => setShowPasswordModal(true)} className="w-full sm:w-auto flex items-center">
+          <Key className="w-4 h-4 mr-2" />
+          Change Password
         </Button>
       </div>
     </div>

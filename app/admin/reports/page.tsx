@@ -76,7 +76,7 @@ export default function ReportsPage() {
         </div>
         <div className="flex gap-2">
           <Button onClick={refreshReports} disabled={isRefreshing} variant="outline">
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ETB{isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
           <Button variant="outline">
@@ -94,7 +94,7 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">${stats.monthlyRevenue}</div>
+            <div className="text-2xl font-bold text-green-600">ETB{stats.monthlyRevenue}</div>
             <p className="text-xs text-muted-foreground">Monthly recurring revenue</p>
           </CardContent>
         </Card>
@@ -149,21 +149,21 @@ export default function ReportsPage() {
               <div className="text-3xl font-bold text-blue-600">{membershipTypeStats.monthly}</div>
               <div className="text-sm text-muted-foreground">Monthly Members</div>
               <Badge variant="outline" className="mt-2">
-                $50/month
+                ETB 50/month
               </Badge>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600">{membershipTypeStats.quarterly}</div>
               <div className="text-sm text-muted-foreground">Quarterly Members</div>
               <Badge variant="outline" className="mt-2">
-                $40/month
+                ETB40/month
               </Badge>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-purple-600">{membershipTypeStats.yearly}</div>
               <div className="text-sm text-muted-foreground">Yearly Members</div>
               <Badge variant="outline" className="mt-2">
-                $35/month
+                ETB35/month
               </Badge>
             </div>
           </div>
@@ -186,7 +186,7 @@ export default function ReportsPage() {
                     <div
                       className="bg-primary h-2 rounded-full"
                       style={{
-                        width: `${Math.max((trend.count / Math.max(...joinTrends.map((t) => t.count))) * 100, 5)}%`,
+                        width: `ETB{Math.max((trend.count / Math.max(...joinTrends.map((t) => t.count))) * 100, 5)}%`,
                       }}
                     />
                   </div>
@@ -233,20 +233,20 @@ export default function ReportsPage() {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <span>Monthly Plans</span>
-              <span className="font-medium">${membershipTypeStats.monthly * 50}</span>
+              <span className="font-medium">ETB{membershipTypeStats.monthly * 50}</span>
             </div>
             <div className="flex justify-between items-center">
               <span>Quarterly Plans</span>
-              <span className="font-medium">${membershipTypeStats.quarterly * 40}</span>
+              <span className="font-medium">ETB{membershipTypeStats.quarterly * 40}</span>
             </div>
             <div className="flex justify-between items-center">
               <span>Yearly Plans</span>
-              <span className="font-medium">${membershipTypeStats.yearly * 35}</span>
+              <span className="font-medium">ETB{membershipTypeStats.yearly * 35}</span>
             </div>
             <div className="border-t pt-4">
               <div className="flex justify-between items-center font-bold">
                 <span>Total Monthly Revenue</span>
-                <span className="text-primary">${stats.monthlyRevenue}</span>
+                <span className="text-primary">ETB{stats.monthlyRevenue}</span>
               </div>
             </div>
           </CardContent>

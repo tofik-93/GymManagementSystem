@@ -12,13 +12,24 @@ import { getMembers, saveMember } from "@/lib/storage"
 import type { Member } from "@/lib/types"
 import { ArrowLeft, Edit, Calendar, Phone, Mail, MapPin, User, AlertTriangle, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
+import { MemberEditModal } from "@/components/edit-member"
 export default function MemberProfilePage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
   const [member, setMember] = useState<Member | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editingMember, setEditingMember] = useState<Member | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  
+const handleEdit = (member: Member) => {
+  console.log(member)
+  setEditingMember(member)
+  setIsEditModalOpen(true)
+}  
+const handleMemberUpdated = (updated: Member) => {
+  setMember(updated); // just replace the single member
+}
 
   useEffect(() => {
     const fetchMember = async () => {
@@ -144,7 +155,7 @@ export default function MemberProfilePage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => handleEdit(member)}>
             <Edit className="w-4 h-4 mr-2" />
             Edit Profile
           </Button>
@@ -322,6 +333,13 @@ export default function MemberProfilePage() {
           </CardContent>
         </Card>
       </div>
+      <MemberEditModal
+    member={editingMember}
+    open={isEditModalOpen}
+    onClose={() => setIsEditModalOpen(false)}
+    onMemberUpdated={handleMemberUpdated}
+  />
     </div>
+    
   )
 }
