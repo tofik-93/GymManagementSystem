@@ -59,7 +59,7 @@ export function MemberRegistrationForm() {
   const calculateMembershipEndDate = (startDate: string, type: string): string => {
     const start = new Date(startDate)
     const end = new Date(start)
-
+  
     switch (type) {
       case "monthly":
         end.setMonth(end.getMonth() + 1)
@@ -71,10 +71,13 @@ export function MemberRegistrationForm() {
         end.setFullYear(end.getFullYear() + 1)
         break
     }
-
+  
+    // Subtract 1 day so the membership ends the day before the same date next month/year
+    end.setDate(end.getDate() - 1)
+  
     return end.toISOString().split("T")[0]
   }
-
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)

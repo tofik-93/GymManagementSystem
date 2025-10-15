@@ -66,21 +66,37 @@ const handleMemberUpdated = (updated: Member) => {
   )
 }
 
-  const getMembershipStatus = (member: Member) => {
-    const today = new Date()
-    const endDate = new Date(member.membershipEndDate)
-    const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24))
+// Helper: number of whole days from a -> b (b - a)
+// Uses UTC midnight normalization to avoid timezone/time-of-day shifts.
+function daysBetweenDates(a: Date, b: Date): number {
+  // normalize to UTC midnight for both dates
+  const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())
+  const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate())
+  const msPerDay = 1000 * 60 * 60 * 24
+  return Math.floor((utcB - utcA) / msPerDay)
+}
 
-    if (!member.isActive) {
-      return { status: "Inactive", variant: "secondary" as const, daysRemaining: 0 }
-    } else if (daysRemaining < 0) {
-      return { status: "Expired", variant: "destructive" as const, daysRemaining }
-    } else if (daysRemaining <= 30) {
-      return { status: "Expiring Soon", variant: "outline" as const, daysRemaining }
-    } else {
-      return { status: "Active", variant: "default" as const, daysRemaining }
-    }
+const getMembershipStatus = (member: Member) => {
+  const today = new Date()
+  const endDate = new Date(member.membershipEndDate)
+
+  // daysRemaining: how many whole days remain from today until endDate
+  // If endDate is today => 0 days remaining
+  const daysRemaining = daysBetweenDates(today, endDate)
+
+  if (!member.isActive) {
+    return { status: "Inactive", variant: "secondary" as const, daysRemaining: 0 }
+  } else if (daysRemaining < 0) {
+    // expired: number of days since expiry is absolute value
+    return { status: "Expired", variant: "destructive" as const, daysRemaining }
+  } else if (daysRemaining <= 30) {
+    // expiring within 30 days (including 0)
+    return { status: "Expiring Soon", variant: "outline" as const, daysRemaining }
+  } else {
+    return { status: "Active", variant: "default" as const, daysRemaining }
   }
+}
+
 
   return (
     <Card>

@@ -299,7 +299,7 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="monthlyPrice">Monthly Membership ($)</Label>
+              <Label htmlFor="monthlyPrice">Monthly Membership (ETB)</Label>
               <Input
                 id="monthlyPrice"
                 type="number"
@@ -308,7 +308,7 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quarterlyPrice">Quarterly Membership ($/month)</Label>
+              <Label htmlFor="quarterlyPrice">Quarterly Membership (ETB/month)</Label>
               <Input
                 id="quarterlyPrice"
                 type="number"
@@ -317,7 +317,7 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="yearlyPrice">Yearly Membership ($/month)</Label>
+              <Label htmlFor="yearlyPrice">Yearly Membership (ETB/month)</Label>
               <Input
                 id="yearlyPrice"
                 type="number"
