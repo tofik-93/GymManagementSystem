@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { saveSettings, getSettings } from "@/lib/storage"
+import { saveSettings, getSettings  , getAdmins , updateAdminPassword } from "@/lib/storage"
 import { Settings, Bell, DollarSign, Shield, Save, Key } from "lucide-react"
 
 interface SettingsState {
@@ -33,6 +33,8 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [settings, setSettings] = useState<SettingsState>({
     gymName: "FitLife Gym",
     adminEmail: "admin@gym.com",
@@ -45,7 +47,19 @@ export default function SettingsPage() {
     autoRenewal: true,
     memberLimit: 500,
   })
+  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
 
+  useEffect(() => {
+    const fetchSettingsAndAdmin = async () => {
+      const storedSettings = await getSettings();
+      if (storedSettings) setSettings(storedSettings);
+  
+      const admins = await getAdmins();
+      if (admins.length > 0) setCurrentAdmin(admins[0]); // Take first admin
+    };
+    fetchSettingsAndAdmin();
+  }, []);
+ 
   const handleInputChange = (field: keyof SettingsState, value: string | number | boolean) => {
     setSettings((prev) => ({ ...prev, [field]: value }))
   }
@@ -68,44 +82,43 @@ export default function SettingsPage() {
     }
   }
 
-  const handlePasswordChange = () => {
-    // TODO: Replace this with actual backend password validation
-    const correctPassword = "admin123" // Example current password
+  const handlePasswordChange = async () => {
+    if (!currentAdmin) return;
+  
+    setPasswordError(null); // reset error
+    setPasswordSuccess(null); // reset success
+  
     if (!showNewPasswordFields) {
-      if (currentPassword !== correctPassword) {
-        toast({
-          title: "Error",
-          description: "Current password is incorrect",
-          variant: "destructive",
-        })
-        return
+      // Step 1: validate current password
+      if (currentPassword !== currentAdmin.password) {
+        setPasswordError("Current password is incorrect");
+        return;
       }
-      setShowNewPasswordFields(true)
-      return
+      setShowNewPasswordFields(true);
+      return;
     }
-
+  
+    // Step 2: validate new password confirmation
     if (newPassword !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New password and confirm password do not match",
-        variant: "destructive",
-      })
-      return
+      setPasswordError("New password and confirm password do not match");
+      return;
     }
-
-    // Simulate password change success
-    toast({
-      title: "Success",
-      description: "Password changed successfully",
-      variant: "default",
-    })
-    setShowPasswordModal(false)
-    setShowNewPasswordFields(false)
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
-  }
-
+  
+    try {
+      await updateAdminPassword(currentAdmin.id, newPassword);
+      setPasswordSuccess("Password changed successfully!");
+      
+      setShowPasswordModal(false);
+      setShowNewPasswordFields(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+  
+      setCurrentAdmin((prev) => prev ? { ...prev, password: newPassword } : prev);
+    } catch (err) {
+      setPasswordError("Failed to update password. Try again.");
+    }
+  };
   // Optionally, load settings on mount:
   useEffect(() => {
     const fetchSettings = async () => {
@@ -131,53 +144,64 @@ export default function SettingsPage() {
       )}
 
       {/* Change password modal */}
+      
       {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
-            <h3 className="text-lg font-bold mb-4">Change Password</h3>
-            {!showNewPasswordFields && (
-              <>
-                <Label>Current Password</Label>
-                <Input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
-              </>
-            )}
-            {showNewPasswordFields && (
-              <>
-                <Label>New Password</Label>
-                <Input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-                <Label>Confirm Password</Label>
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </>
-            )}
-            <div className="flex justify-end mt-4 gap-2">
-              <Button variant="outline" onClick={() => {
-                setShowPasswordModal(false)
-                setShowNewPasswordFields(false)
-                setCurrentPassword("")
-                setNewPassword("")
-                setConfirmPassword("")
-              }}>
-                Cancel
-              </Button>
-              <Button onClick={handlePasswordChange}>
-                Save
-              </Button>
-            </div>
-          </div>
-        </div>
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
+      <h3 className="text-lg font-bold mb-4">Change Password</h3>
+
+      {passwordError && <p className="text-sm text-red-600 mb-2">{passwordError}</p>}
+      {passwordSuccess && <p className="text-sm text-green-600 mb-2">{passwordSuccess}</p>}
+
+      {!showNewPasswordFields && (
+        <>
+          <Label>Current Password</Label>
+          <Input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+        </>
       )}
+      {showNewPasswordFields && (
+        <>
+          <Label>New Password</Label>
+          <Input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <Label>Confirm Password</Label>
+          <Input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        </>
+      )}
+
+      <div className="flex justify-end mt-4 gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowPasswordModal(false);
+            setShowNewPasswordFields(false);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+            setPasswordError(null);
+            setPasswordSuccess(null);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button onClick={handlePasswordChange}>
+          Save
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
 
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>

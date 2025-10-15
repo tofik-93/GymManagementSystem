@@ -17,6 +17,7 @@ export function MembersTable() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
   const { toast } = useToast()
+  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
 
   useEffect(() => {
     const loadMembers = async () => {
@@ -166,14 +167,15 @@ const handleMemberUpdated = (updated: Member) => {
                       <Edit className="h-4 w-4" />
                     </Button>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteMember(member.id, member.name)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMemberToDelete(member)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+
                     </div>
                   </div>
                 </div>
@@ -191,6 +193,38 @@ const handleMemberUpdated = (updated: Member) => {
   />
 )}
 
+{memberToDelete && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
+      <h3 className="text-lg font-bold mb-4">Delete Member</h3>
+      <p className="text-sm mb-4">
+        Are you sure you want to delete <strong>{memberToDelete.name}</strong>?
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => setMemberToDelete(null)}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={() => {
+            deleteMember(memberToDelete.id)
+            setMembers((prev) => prev.filter((m) => m.id !== memberToDelete.id))
+            toast({
+              title: "Member Deleted",
+              description: `${memberToDelete.name} has been removed from the system.`,
+            })
+            setMemberToDelete(null)
+          }}
+        >
+          Delete
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
 
     </Card>
     

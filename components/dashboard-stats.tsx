@@ -41,7 +41,7 @@ export function DashboardStatsCards() {
     { title: "Active Members", value: stats.activeMembers, description: "Currently active memberships", icon: UserCheck, color: "text-green-600" },
     { title: "Expiring Soon", value: stats.expiringMembers, description: "Memberships expiring in 30 days", icon: AlertTriangle, color: "text-yellow-600" },
     { title: "Expired Members", value: stats.expiredMembers, description: "Memberships that have expired", icon: UserX, color: "text-red-600" },
-    { title: "Monthly Revenue", value: `$${stats.monthlyRevenue}`, description: "Estimated monthly income", icon: DollarSign, color: "text-primary" },
+    { title: "Monthly Revenue", value: `ETB ${stats.monthlyRevenue}`, description: "Estimated monthly income", icon: DollarSign, color: "text-primary" },
     { title: "New This Month", value: stats.newMembersThisMonth, description: "New members joined this month", icon: TrendingUp, color: "text-purple-600" },
   ]
 

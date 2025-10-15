@@ -53,12 +53,12 @@ export default function LoginPage() {
         setLoading(false)
         return
       }
-
-      setGymId(foundAdmin.gymId)
-      console.log(`gym id set to ${foundAdmin.gymId}`)
-      setAuthenticated(true)
-
-      router.push("/")
+      if (foundAdmin) {
+        setGymId(foundAdmin.gymId)
+        setAuthenticated(true, foundAdmin.gymId)
+        router.push("/")
+      }
+      
     } catch (err) {
       console.error("Login error:", err)
       setError("Something went wrong during login.")

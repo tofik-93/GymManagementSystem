@@ -211,6 +211,11 @@ export const updateMembershipAlerts = async (): Promise<void> => {
   })
   await set(ref(rtdb, `gyms/${gymId}/alerts`), alerts)
 }
+export const updateAdminPassword = async (adminId: string, newPassword: string) => {
+  const adminRef = ref(rtdb, `admins/${adminId}`);
+  await update(adminRef, { password: newPassword, updatedAt: new Date().toISOString() });
+};
+
 
 // ------------------------
 // Admin Operations

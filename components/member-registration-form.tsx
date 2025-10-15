@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,14 +9,15 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { saveMember } from "@/lib/storage"
-import type { Member } from "@/lib/types"
+import { saveMember, getSettings } from "@/lib/storage"
+import type { Member, GymSettings } from "@/lib/types"
 import { Camera, User, Phone, Mail, MapPin, Calendar, AlertTriangle } from "lucide-react"
 
 export function MemberRegistrationForm() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [settings, setSettings] = useState<GymSettings | null>(null)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -27,9 +27,17 @@ export function MemberRegistrationForm() {
     dateOfBirth: "",
     emergencyContact: "",
     emergencyPhone: "",
-    membershipType: "" as "monthly" | "quarterly" | "yearly" | "",
+    membershipType: "" as string,
     photo: "",
   })
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const gymSettings = await getSettings()
+      setSettings(gymSettings)
+    }
+    fetchSettings()
+  }, [])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -48,7 +56,7 @@ export function MemberRegistrationForm() {
     }
   }
 
-  const calculateMembershipEndDate = (startDate: string, type: "monthly" | "quarterly" | "yearly"): string => {
+  const calculateMembershipEndDate = (startDate: string, type: string): string => {
     const start = new Date(startDate)
     const end = new Date(start)
 
@@ -72,7 +80,6 @@ export function MemberRegistrationForm() {
     setIsSubmitting(true)
 
     try {
-      // Validate required fields
       if (!formData.name || !formData.email || !formData.phone || !formData.membershipType) {
         toast({
           title: "Validation Error",
@@ -96,7 +103,7 @@ export function MemberRegistrationForm() {
         emergencyPhone: formData.emergencyPhone,
         photo: formData.photo,
         joinDate: today,
-        membershipType: formData.membershipType,
+        membershipType: formData.membershipType as "monthly" | "quarterly" | "yearly",
         membershipStartDate: today,
         membershipEndDate,
         isActive: true,
@@ -104,14 +111,13 @@ export function MemberRegistrationForm() {
         updatedAt: new Date().toISOString(),
       }
 
-      saveMember(newMember)
+      await saveMember(newMember)
 
       toast({
         title: "Registration Successful!",
         description: `${formData.name} has been registered successfully.`,
       })
 
-      // Reset form
       setFormData({
         name: "",
         email: "",
@@ -147,20 +153,13 @@ export function MemberRegistrationForm() {
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
               {photoPreview ? (
-                <img
-                  src={photoPreview || "/placeholder.svg"}
-                  alt="Member photo"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-primary/20"
-                />
+                <img src={photoPreview} alt="Member photo" className="w-24 h-24 rounded-full object-cover border-4 border-primary/20" />
               ) : (
                 <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center border-4 border-primary/20">
                   <User className="w-8 h-8 text-muted-foreground" />
                 </div>
               )}
-              <label
-                htmlFor="photo-upload"
-                className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors"
-              >
+              <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors">
                 <Camera className="w-4 h-4" />
               </label>
               <input id="photo-upload" type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
@@ -171,122 +170,72 @@ export function MemberRegistrationForm() {
           {/* Personal Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-2">
-                <User className="w-4 h-4" />
+              <Label htmlFor="name">
                 Full Name *
               </Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                placeholder="Enter full name"
-                required
-              />
+              <Input id="name" value={formData.name} onChange={(e) => handleInputChange("name", e.target.value)} placeholder="Enter full name" required />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
+              <Label htmlFor="email">
                 Email Address *
               </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                placeholder="Enter email address"
-                required
-              />
+              <Input id="email" type="email" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} placeholder="Enter email address" required />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="phone" className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
+              <Label htmlFor="phone">
                 Phone Number *
               </Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
-                placeholder="Enter phone number"
-                required
-              />
+              <Input id="phone" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} placeholder="Enter phone number" required />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="dateOfBirth" className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
+              <Label htmlFor="dateOfBirth">
                 Date of Birth
               </Label>
-              <Input
-                id="dateOfBirth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
-              />
+              <Input id="dateOfBirth" type="date" value={formData.dateOfBirth} onChange={(e) => handleInputChange("dateOfBirth", e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
+            <Label htmlFor="address">
               Address
             </Label>
-            <Textarea
-              id="address"
-              value={formData.address}
-              onChange={(e) => handleInputChange("address", e.target.value)}
-              placeholder="Enter complete address"
-              rows={3}
-            />
+            <Textarea id="address" value={formData.address} onChange={(e) => handleInputChange("address", e.target.value)} rows={3} />
           </div>
 
           {/* Emergency Contact */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="emergencyContact" className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
+              <Label htmlFor="emergencyContact">
                 Emergency Contact Name
               </Label>
-              <Input
-                id="emergencyContact"
-                value={formData.emergencyContact}
-                onChange={(e) => handleInputChange("emergencyContact", e.target.value)}
-                placeholder="Enter emergency contact name"
-              />
+              <Input id="emergencyContact" value={formData.emergencyContact} onChange={(e) => handleInputChange("emergencyContact", e.target.value)} />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="emergencyPhone" className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
+              <Label htmlFor="emergencyPhone">
                 Emergency Contact Phone
               </Label>
-              <Input
-                id="emergencyPhone"
-                value={formData.emergencyPhone}
-                onChange={(e) => handleInputChange("emergencyPhone", e.target.value)}
-                placeholder="Enter emergency contact phone"
-              />
+              <Input id="emergencyPhone" value={formData.emergencyPhone} onChange={(e) => handleInputChange("emergencyPhone", e.target.value)} />
             </div>
           </div>
 
           {/* Membership Type */}
           <div className="space-y-2">
-            <Label htmlFor="membershipType">Membership Type *</Label>
-            <Select
-              value={formData.membershipType}
-              onValueChange={(value) => handleInputChange("membershipType", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select membership type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="monthly">Monthly - $50/month</SelectItem>
-                <SelectItem value="quarterly">Quarterly - $40/month (3 months)</SelectItem>
-                <SelectItem value="yearly">Yearly - $35/month (12 months)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+  <Label htmlFor="membershipType">Membership Type *</Label>
+  <Select value={formData.membershipType} onValueChange={(value) => handleInputChange("membershipType", value)}>
+    <SelectTrigger>
+      <SelectValue placeholder="Select membership type" />
+    </SelectTrigger>
+    <SelectContent>
+      {settings && (
+        <>
+          <SelectItem value="monthly">Monthly - ETB {settings.monthlyPrice}/month</SelectItem>
+          <SelectItem value="quarterly">Quarterly - ETB {settings.quarterlyPrice}/month</SelectItem>
+          <SelectItem value="yearly">Yearly - ETB {settings.yearlyPrice}/month</SelectItem>
+        </>
+      )}
+    </SelectContent>
+  </Select>
+</div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Registering..." : "Register Member"}
