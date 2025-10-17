@@ -11,13 +11,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { saveMember, getSettings } from "@/lib/storage"
 import type { Member, GymSettings } from "@/lib/types"
-import { Camera, User, Phone, Mail, MapPin, Calendar, AlertTriangle } from "lucide-react"
+import { Camera, User } from "lucide-react"
+import { translations } from "@/lib/language"
+import { getAdminLanguage } from "@/lib/auth"
 
 export function MemberRegistrationForm() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [settings, setSettings] = useState<GymSettings | null>(null)
+  const [language, setLanguage] = useState<"en" | "am">("en")
 
   const [formData, setFormData] = useState({
     name: "",
@@ -32,12 +35,12 @@ export function MemberRegistrationForm() {
   })
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      const gymSettings = await getSettings()
-      setSettings(gymSettings)
-    }
-    fetchSettings()
+    const lang = getAdminLanguage()
+    setLanguage(lang)
+    getSettings().then(setSettings)
   }, [])
+
+  const t = translations[language]
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -59,7 +62,7 @@ export function MemberRegistrationForm() {
   const calculateMembershipEndDate = (startDate: string, type: string): string => {
     const start = new Date(startDate)
     const end = new Date(start)
-  
+
     switch (type) {
       case "monthly":
         end.setMonth(end.getMonth() + 1)
@@ -71,13 +74,11 @@ export function MemberRegistrationForm() {
         end.setFullYear(end.getFullYear() + 1)
         break
     }
-  
-    // Subtract 1 day so the membership ends the day before the same date next month/year
+
     end.setDate(end.getDate() - 1)
-  
     return end.toISOString().split("T")[0]
   }
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -85,16 +86,32 @@ export function MemberRegistrationForm() {
     try {
       if (!formData.name || !formData.email || !formData.phone || !formData.membershipType) {
         toast({
-          title: "Validation Error",
-          description: "Please fill in all required fields.",
+          title: t.validation_error,
+          description: t.fill_required_fields,
           variant: "destructive",
         })
         return
       }
 
+// ✅ Determine membershipTypeAmount based on selected type
+let membershipTypeAmount = 0
+if (settings) {
+  switch (formData.membershipType) {
+    case "monthly":
+      membershipTypeAmount = settings.monthlyPrice
+      break
+    case "quarterly":
+      membershipTypeAmount = settings.quarterlyPrice
+      break
+    case "yearly":
+      membershipTypeAmount = settings.yearlyPrice
+      break
+  }
+}
+
       const today = new Date().toISOString().split("T")[0]
       const membershipEndDate = calculateMembershipEndDate(today, formData.membershipType)
-
+      
       const newMember: Member = {
         id: `member-${Date.now()}`,
         name: formData.name,
@@ -109,6 +126,7 @@ export function MemberRegistrationForm() {
         membershipType: formData.membershipType as "monthly" | "quarterly" | "yearly",
         membershipStartDate: today,
         membershipEndDate,
+        membershipTypeAmount,
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -117,8 +135,8 @@ export function MemberRegistrationForm() {
       await saveMember(newMember)
 
       toast({
-        title: "Registration Successful!",
-        description: `${formData.name} has been registered successfully.`,
+        title: t.registration_success,
+        description: `${formData.name} ${t.registered_successfully}`,
       })
 
       setFormData({
@@ -133,10 +151,10 @@ export function MemberRegistrationForm() {
         photo: "",
       })
       setPhotoPreview(null)
-    } catch (error) {
+    } catch {
       toast({
-        title: "Registration Failed",
-        description: "There was an error registering the member. Please try again.",
+        title: t.registration_failed,
+        description: t.registration_failed_desc,
         variant: "destructive",
       })
     } finally {
@@ -147,8 +165,8 @@ export function MemberRegistrationForm() {
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold text-primary">Member Registration</CardTitle>
-        <CardDescription>Register a new gym member with complete details and membership information</CardDescription>
+        <CardTitle className="text-2xl font-bold text-primary">{t.member_registration}</CardTitle>
+        <CardDescription>{t.member_registration_desc}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -167,81 +185,68 @@ export function MemberRegistrationForm() {
               </label>
               <input id="photo-upload" type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
             </div>
-            <p className="text-sm text-muted-foreground">Upload member photo (optional)</p>
+            <p className="text-sm text-muted-foreground">{t.upload_photo_optional}</p>
           </div>
 
-          {/* Personal Information */}
+          {/* Personal Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Full Name *
-              </Label>
-              <Input id="name" value={formData.name} onChange={(e) => handleInputChange("name", e.target.value)} placeholder="Enter full name" required />
+              <Label htmlFor="name">{t.name} *</Label>
+              <Input id="name" value={formData.name} onChange={(e) => handleInputChange("name", e.target.value)} placeholder={t.enter_name} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">
-                Email Address *
-              </Label>
-              <Input id="email" type="email" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} placeholder="Enter email address" required />
+              <Label htmlFor="email">{t.email} *</Label>
+              <Input id="email" type="email" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} placeholder={t.enter_email} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">
-                Phone Number *
-              </Label>
-              <Input id="phone" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} placeholder="Enter phone number" required />
+              <Label htmlFor="phone">{t.phone} *</Label>
+              <Input id="phone" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} placeholder={t.enter_phone} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dateOfBirth">
-                Date of Birth
-              </Label>
+              <Label htmlFor="dateOfBirth">{t.date_of_birth}</Label>
               <Input id="dateOfBirth" type="date" value={formData.dateOfBirth} onChange={(e) => handleInputChange("dateOfBirth", e.target.value)} />
             </div>
           </div>
 
+          {/* Address */}
           <div className="space-y-2">
-            <Label htmlFor="address">
-              Address
-            </Label>
+            <Label htmlFor="address">{t.address}</Label>
             <Textarea id="address" value={formData.address} onChange={(e) => handleInputChange("address", e.target.value)} rows={3} />
           </div>
 
           {/* Emergency Contact */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="emergencyContact">
-                Emergency Contact Name
-              </Label>
+              <Label htmlFor="emergencyContact">{t.emergency_contact}</Label>
               <Input id="emergencyContact" value={formData.emergencyContact} onChange={(e) => handleInputChange("emergencyContact", e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="emergencyPhone">
-                Emergency Contact Phone
-              </Label>
+              <Label htmlFor="emergencyPhone">{t.emergency_phone}</Label>
               <Input id="emergencyPhone" value={formData.emergencyPhone} onChange={(e) => handleInputChange("emergencyPhone", e.target.value)} />
             </div>
           </div>
 
           {/* Membership Type */}
           <div className="space-y-2">
-  <Label htmlFor="membershipType">Membership Type *</Label>
-  <Select value={formData.membershipType} onValueChange={(value) => handleInputChange("membershipType", value)}>
-    <SelectTrigger>
-      <SelectValue placeholder="Select membership type" />
-    </SelectTrigger>
-    <SelectContent>
-      {settings && (
-        <>
-          <SelectItem value="monthly">Monthly - ETB {settings.monthlyPrice}/month</SelectItem>
-          <SelectItem value="quarterly">Quarterly - ETB {settings.quarterlyPrice}/month</SelectItem>
-          <SelectItem value="yearly">Yearly - ETB {settings.yearlyPrice}/month</SelectItem>
-        </>
-      )}
-    </SelectContent>
-  </Select>
-</div>
+            <Label htmlFor="membershipType">{t.membershipType} *</Label>
+            <Select value={formData.membershipType} onValueChange={(value) => handleInputChange("membershipType", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder={t.select_membership_type} />
+              </SelectTrigger>
+              <SelectContent>
+                {settings && (
+                  <>
+                    <SelectItem value="monthly">{t.monthly} - ETB {settings.monthlyPrice}</SelectItem>
+                    <SelectItem value="quarterly">{t.quarterly} - ETB {settings.quarterlyPrice}</SelectItem>
+                    <SelectItem value="yearly">{t.yearly} - ETB {settings.yearlyPrice}</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Registering..." : "Register Member"}
+            {isSubmitting ? t.registering : t.register_member}
           </Button>
         </form>
       </CardContent>

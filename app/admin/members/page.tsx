@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState , useEffect } from "react"
 import { MembersTable } from "@/components/members-table"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -10,8 +10,24 @@ import { saveAs } from "file-saver"
 import { ref, get } from "firebase/database"
 import { rtdb } from "@/lib/firebaseConfig"
 import { getGymId } from "@/lib/gymContext"
+import { translations } from "@/lib/language"
+import { getAdminLanguage } from "@/lib/auth"
+ // assuming you have translations
+
 export default function MembersPage() {
   const [loading, setLoading] = useState(false)
+  
+  const [language, setLanguage] = useState<"en" | "am">("en")
+const [mounted, setMounted] = useState(false)
+const t = translations[language]
+
+useEffect(() => {
+  const lang = getAdminLanguage()
+  setLanguage(lang)
+  setMounted(true)
+}, [])
+
+if (!mounted) return null  // avoid server/client mismatch
 
   const exportMembers = async () => {
     try {
@@ -20,14 +36,14 @@ export default function MembersPage() {
       const snapshot = await get(ref(rtdb, `gyms/${gymId}/members`))
   
       if (!snapshot.exists()) {
-        console.warn("No members found.")
+        console.warn(t.no_members_found)
         setLoading(false)
         return
       }
   
       const data = snapshot.val()
       const membersArray = Object.keys(data).map((id) => {
-        const { photo, ...rest } = data[id] // remove the photo or huge fields
+        const { photo, ...rest } = data[id] // remove large fields
         return {
           id,
           ...rest,
@@ -40,7 +56,6 @@ export default function MembersPage() {
         }
       })
       
-  
       const worksheet = XLSX.utils.json_to_sheet(membersArray)
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, "Members")
@@ -54,7 +69,7 @@ export default function MembersPage() {
       })
       saveAs(blob, `gym_members_${gymId}.xlsx`)
     } catch (error) {
-      console.error("Export failed:", error)
+      console.error(t.export_failed, error)
     } finally {
       setLoading(false)
     }
@@ -66,20 +81,20 @@ export default function MembersPage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Member Management</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t.member_management}</h1>
           <p className="text-muted-foreground mt-2">
-            Manage all gym members, their profiles, and membership status
+            {t.manage_all_members}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportMembers} disabled={loading}>
             <Download className="w-4 h-4 mr-2" />
-            {loading ? "Exporting..." : "Export Data"}
+            {loading ? t.exporting : t.export_data}
           </Button>
           <Button asChild>
             <Link href="/admin/register">
               <UserPlus className="w-4 h-4 mr-2" />
-              Add Member
+              {t.add_member}
             </Link>
           </Button>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState , useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,8 +9,11 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { saveSettings, getSettings  , getAdmins , updateAdminPassword } from "@/lib/storage"
+import { saveSettings, getSettings, getAdmins, updateAdminPassword } from "@/lib/storage"
 import { Settings, Bell, DollarSign, Shield, Save, Key } from "lucide-react"
+import { getAdminLanguage } from "@/lib/auth"
+import { Admin } from "@/lib/types"
+import { translations } from "@/lib/language"
 
 interface SettingsState {
   gymName: string
@@ -27,17 +30,20 @@ interface SettingsState {
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showNewPasswordFields, setShowNewPasswordFields] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showNewPasswordFields, setShowNewPasswordFields] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
+  const [language, setLanguage] = useState<"en" | "am">(getAdminLanguage())
+  const t = translations[language]
+
   const [settings, setSettings] = useState<SettingsState>({
-    gymName: "FitLife Gym",
-    adminEmail: "admin@gym.com",
+    gymName: "",
+    adminEmail: "",
     alertDays: 30,
     monthlyPrice: 50,
     quarterlyPrice: 40,
@@ -47,19 +53,22 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
     autoRenewal: true,
     memberLimit: 500,
   })
-  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
+
+  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null)
 
   useEffect(() => {
+    const lang = getAdminLanguage()
+    setLanguage(lang)
     const fetchSettingsAndAdmin = async () => {
-      const storedSettings = await getSettings();
-      if (storedSettings) setSettings(storedSettings);
-  
-      const admins = await getAdmins();
-      if (admins.length > 0) setCurrentAdmin(admins[0]); // Take first admin
-    };
-    fetchSettingsAndAdmin();
-  }, []);
- 
+      const storedSettings = await getSettings()
+      if (storedSettings) setSettings(storedSettings)
+
+      const admins = await getAdmins()
+      if (admins.length > 0) setCurrentAdmin(admins[0])
+    }
+    fetchSettingsAndAdmin()
+  }, [])
+
   const handleInputChange = (field: keyof SettingsState, value: string | number | boolean) => {
     setSettings((prev) => ({ ...prev, [field]: value }))
   }
@@ -68,58 +77,53 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
     try {
       await saveSettings(settings)
       toast({
-        title: "Settings Saved",
-        description: "Your gym settings have been updated successfully.",
-        variant:"default",
+        title: t.settings_saved,
+        description: t.settings_saved_desc,
+        variant: "default",
       })
-      setShowSuccessModal(true);
+      setShowSuccessModal(true)
     } catch {
       toast({
-        title: "Error",
-        description: "Failed to save settings. Try again.",
+        title: t.error,
+        description: t.settings_save_error,
         variant: "destructive",
       })
     }
   }
 
   const handlePasswordChange = async () => {
-    if (!currentAdmin) return;
-  
-    setPasswordError(null); // reset error
-    setPasswordSuccess(null); // reset success
-  
+    if (!currentAdmin) return
+    setPasswordError(null)
+    setPasswordSuccess(null)
+
     if (!showNewPasswordFields) {
-      // Step 1: validate current password
       if (currentPassword !== currentAdmin.password) {
-        setPasswordError("Current password is incorrect");
-        return;
+        setPasswordError(t.current_password_incorrect)
+        return
       }
-      setShowNewPasswordFields(true);
-      return;
+      setShowNewPasswordFields(true)
+      return
     }
-  
-    // Step 2: validate new password confirmation
+
     if (newPassword !== confirmPassword) {
-      setPasswordError("New password and confirm password do not match");
-      return;
+      setPasswordError(t.new_password_mismatch)
+      return
     }
-  
+
     try {
-      await updateAdminPassword(currentAdmin.id, newPassword);
-      setPasswordSuccess("Password changed successfully!");
-      
-      setShowPasswordModal(false);
-      setShowNewPasswordFields(false);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-  
-      setCurrentAdmin((prev) => prev ? { ...prev, password: newPassword } : prev);
-    } catch (err) {
-      setPasswordError("Failed to update password. Try again.");
+      await updateAdminPassword(currentAdmin.id, newPassword)
+      setPasswordSuccess(t.password_changed)
+      setShowPasswordModal(false)
+      setShowNewPasswordFields(false)
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      setCurrentAdmin((prev) => (prev ? { ...prev, password: newPassword } : prev))
+    } catch {
+      setPasswordError(t.password_update_failed)
     }
-  };
-  // Optionally, load settings on mount:
+  }
+
   useEffect(() => {
     const fetchSettings = async () => {
       const storedSettings = await getSettings()
@@ -130,82 +134,77 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
-      {/* Settings saved success modal */}
+      {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
-            <h3 className="text-lg font-bold mb-4">Settings Updated</h3>
-            <p className="text-sm mb-4">Your gym settings have been successfully saved.</p>
+            <h3 className="text-lg font-bold mb-4">{t.settings_updated}</h3>
+            <p className="text-sm mb-4">{t.settings_updated_desc}</p>
             <Button onClick={() => setShowSuccessModal(false)} className="w-full">
-              Close
+              {t.close}
             </Button>
           </div>
         </div>
       )}
 
-      {/* Change password modal */}
-      
+      {/* Change Password Modal */}
       {showPasswordModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-    <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
-      <h3 className="text-lg font-bold mb-4">Change Password</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
+            <h3 className="text-lg font-bold mb-4">{t.change_password}</h3>
+            {passwordError && <p className="text-sm text-red-600 mb-2">{passwordError}</p>}
+            {passwordSuccess && <p className="text-sm text-green-600 mb-2">{passwordSuccess}</p>}
 
-      {passwordError && <p className="text-sm text-red-600 mb-2">{passwordError}</p>}
-      {passwordSuccess && <p className="text-sm text-green-600 mb-2">{passwordSuccess}</p>}
+            {!showNewPasswordFields ? (
+              <>
+                <Label>{t.current_password}</Label>
+                <Input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+              </>
+            ) : (
+              <>
+                <Label>{t.new_password}</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <Label>{t.confirm_password}</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </>
+            )}
 
-      {!showNewPasswordFields && (
-        <>
-          <Label>Current Password</Label>
-          <Input
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-          />
-        </>
+            <div className="flex justify-end mt-4 gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPasswordModal(false)
+                  setShowNewPasswordFields(false)
+                  setCurrentPassword("")
+                  setNewPassword("")
+                  setConfirmPassword("")
+                  setPasswordError(null)
+                  setPasswordSuccess(null)
+                }}
+              >
+                {t.cancel}
+              </Button>
+              <Button onClick={handlePasswordChange}>{t.save}</Button>
+            </div>
+          </div>
+        </div>
       )}
-      {showNewPasswordFields && (
-        <>
-          <Label>New Password</Label>
-          <Input
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
-          <Label>Confirm Password</Label>
-          <Input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
-        </>
-      )}
-
-      <div className="flex justify-end mt-4 gap-2">
-        <Button
-          variant="outline"
-          onClick={() => {
-            setShowPasswordModal(false);
-            setShowNewPasswordFields(false);
-            setCurrentPassword("");
-            setNewPassword("");
-            setConfirmPassword("");
-            setPasswordError(null);
-            setPasswordSuccess(null);
-          }}
-        >
-          Cancel
-        </Button>
-        <Button onClick={handlePasswordChange}>
-          Save
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
 
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-2">Configure your gym management system preferences</p>
+        <h1 className="text-3xl font-bold text-foreground">{t.settings}</h1>
+        <p className="text-muted-foreground mt-2">{t.settings_desc}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -213,13 +212,13 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" /> General Settings
+              <Settings className="w-5 h-5" /> {t.general_settings}
             </CardTitle>
-            <CardDescription>Basic gym information and configuration</CardDescription>
+            <CardDescription>{t.general_settings_desc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="gymName">Gym Name</Label>
+              <Label htmlFor="gymName">{t.gym_name}</Label>
               <Input
                 id="gymName"
                 value={settings.gymName}
@@ -227,7 +226,7 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="adminEmail">Admin Email</Label>
+              <Label htmlFor="adminEmail">{t.admin_email}</Label>
               <Input
                 id="adminEmail"
                 type="email"
@@ -236,7 +235,7 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="memberLimit">Member Limit</Label>
+              <Label htmlFor="memberLimit">{t.member_limit}</Label>
               <Input
                 id="memberLimit"
                 type="number"
@@ -251,13 +250,13 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5" /> Notification Settings
+              <Bell className="w-5 h-5" /> {t.notification_settings}
             </CardTitle>
-            <CardDescription>Configure alert and notification preferences</CardDescription>
+            <CardDescription>{t.notification_settings_desc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="alertDays">Alert Days Before Expiry</Label>
+              <Label htmlFor="alertDays">{t.alert_days_before_expiry}</Label>
               <Input
                 id="alertDays"
                 type="number"
@@ -268,8 +267,8 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
             <Separator />
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">Send alerts via email</p>
+                <Label>{t.email_notifications}</Label>
+                <p className="text-sm text-muted-foreground">{t.email_notifications_desc}</p>
               </div>
               <Switch
                 checked={settings.emailNotifications}
@@ -278,8 +277,8 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>SMS Notifications</Label>
-                <p className="text-sm text-muted-foreground">Send alerts via SMS</p>
+                <Label>{t.sms_notifications}</Label>
+                <p className="text-sm text-muted-foreground">{t.sms_notifications_desc}</p>
               </div>
               <Switch
                 checked={settings.smsNotifications}
@@ -293,13 +292,13 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" /> Pricing Settings
+              <DollarSign className="w-5 h-5" /> {t.pricing_settings}
             </CardTitle>
-            <CardDescription>Configure membership pricing tiers</CardDescription>
+            <CardDescription>{t.pricing_settings_desc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="monthlyPrice">Monthly Membership (ETB)</Label>
+              <Label htmlFor="monthlyPrice">{t.monthly_membership}</Label>
               <Input
                 id="monthlyPrice"
                 type="number"
@@ -308,7 +307,7 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quarterlyPrice">Quarterly Membership (ETB/month)</Label>
+              <Label htmlFor="quarterlyPrice">{t.quarterly_membership}</Label>
               <Input
                 id="quarterlyPrice"
                 type="number"
@@ -317,7 +316,7 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="yearlyPrice">Yearly Membership (ETB/month)</Label>
+              <Label htmlFor="yearlyPrice">{t.yearly_membership}</Label>
               <Input
                 id="yearlyPrice"
                 type="number"
@@ -332,15 +331,15 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" /> System Settings
+              <Shield className="w-5 h-5" /> {t.system_settings}
             </CardTitle>
-            <CardDescription>Advanced system configuration options</CardDescription>
+            <CardDescription>{t.system_settings_desc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Auto Renewal</Label>
-                <p className="text-sm text-muted-foreground">Automatically renew expired memberships</p>
+                <Label>{t.auto_renewal}</Label>
+                <p className="text-sm text-muted-foreground">{t.auto_renewal_desc}</p>
               </div>
               <Switch
                 checked={settings.autoRenewal}
@@ -349,11 +348,11 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
             </div>
             <Separator />
             <div className="space-y-2">
-              <Label>System Status</Label>
+              <Label>{t.system_status}</Label>
               <div className="flex gap-2">
-                <Badge variant="default">Online</Badge>
-                <Badge variant="secondary">Database Connected</Badge>
-                <Badge variant="outline">Alerts Active</Badge>
+                <Badge variant="default">{t.online}</Badge>
+                <Badge variant="secondary">{t.database_connected}</Badge>
+                <Badge variant="outline">{t.alerts_active}</Badge>
               </div>
             </div>
           </CardContent>
@@ -364,11 +363,11 @@ const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
       <div className="flex justify-end gap-2">
         <Button onClick={handleSave} className="w-full sm:w-auto flex items-center">
           <Save className="w-4 h-4 mr-2" />
-          Save Settings
+          {t.save_settings}
         </Button>
         <Button onClick={() => setShowPasswordModal(true)} className="w-full sm:w-auto flex items-center">
           <Key className="w-4 h-4 mr-2" />
-          Change Password
+          {t.change_password}
         </Button>
       </div>
     </div>

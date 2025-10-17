@@ -9,15 +9,20 @@ import { getAlerts, updateMembershipAlerts, getMembers, saveMember } from "@/lib
 import type { MembershipAlert, Member } from "@/lib/types"
 import { Bell, AlertTriangle, Clock, User, Calendar, RefreshCw, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { translations } from "@/lib/language"
+import { getAdminLanguage } from "@/lib/auth"
 
 export function AlertSystem() {
   const [alerts, setAlerts] = useState<MembershipAlert[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
-
+  const [language, setLanguage] = useState<"en" | "am">("en")
+  
+  const t = translations[language]
   useEffect(() => {
+    const lang = getAdminLanguage()
+    setLanguage(lang)
     loadAlerts()
-    // Auto-refresh alerts every minute
     const interval = setInterval(loadAlerts, 60000)
     return () => clearInterval(interval)
   }, [])
@@ -34,15 +39,14 @@ export function AlertSystem() {
     loadAlerts()
     setIsRefreshing(false)
     toast({
-      title: "Alerts Refreshed",
-      description: "Membership alerts have been updated.",
+      title: t.alerts_refreshed,
+      description: t.membership_alerts_updated,
     })
   }
 
   const renewMembershipFromAlert = (alert: MembershipAlert) => {
     const members = getMembers()
     const member = members.find((m) => m.id === alert.memberId)
-
     if (!member) return
 
     const today = new Date()
@@ -71,24 +75,21 @@ export function AlertSystem() {
     saveMember(updatedMember)
     loadAlerts()
     toast({
-      title: "Membership Renewed",
-      description: `${member.name}'s membership has been renewed successfully.`,
+      title: t.membership_renewed,
+      description: `${member.name} ${t.membership_renewed_success}`,
     })
   }
 
   const dismissAlert = (alertId: string) => {
-    // In a real app, you'd mark the alert as dismissed in storage
     setAlerts((prev) => prev.filter((alert) => alert.id !== alertId))
     toast({
-      title: "Alert Dismissed",
-      description: "Alert has been removed from the list.",
+      title: t.alert_dismissed,
+      description: t.alert_removed,
     })
   }
 
   const getAlertPriority = (alert: MembershipAlert) => {
-    if (alert.alertType === "expired") {
-      return { priority: "high", color: "text-red-600", bgColor: "bg-red-50", borderColor: "border-red-200" }
-    } else if (alert.daysRemaining <= 7) {
+    if (alert.alertType === "expired" || alert.daysRemaining <= 7) {
       return { priority: "high", color: "text-red-600", bgColor: "bg-red-50", borderColor: "border-red-200" }
     } else if (alert.daysRemaining <= 14) {
       return { priority: "medium", color: "text-orange-600", bgColor: "bg-orange-50", borderColor: "border-orange-200" }
@@ -100,9 +101,7 @@ export function AlertSystem() {
   const groupedAlerts = {
     expired: alerts.filter((alert) => alert.alertType === "expired"),
     critical: alerts.filter((alert) => alert.alertType === "expiring" && alert.daysRemaining <= 7),
-    warning: alerts.filter(
-      (alert) => alert.alertType === "expiring" && alert.daysRemaining > 7 && alert.daysRemaining <= 14,
-    ),
+    warning: alerts.filter((alert) => alert.alertType === "expiring" && alert.daysRemaining > 7 && alert.daysRemaining <= 14),
     info: alerts.filter((alert) => alert.alertType === "expiring" && alert.daysRemaining > 14),
   }
 
@@ -111,37 +110,42 @@ export function AlertSystem() {
   return (
     <div className="space-y-6">
       {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">{t.membership_alerts}</h1>
+        <p className="text-muted-foreground mt-2">{t.monitor_membership_alerts}</p>
+      </div>
+
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <Bell className="w-6 h-6 text-primary" />
           <div>
-            <h2 className="text-2xl font-bold">Alert System</h2>
-            <p className="text-muted-foreground">30-day membership expiration alerts</p>
+            <h2 className="text-2xl font-bold">{t.alert_system}</h2>
+            <p className="text-muted-foreground">{t.expiration_alerts_30days}</p>
           </div>
           {totalCriticalAlerts > 0 && (
             <Badge variant="destructive" className="ml-2">
-              {totalCriticalAlerts} Critical
+              {totalCriticalAlerts} {t.critical}
             </Badge>
           )}
         </div>
         <Button onClick={refreshAlerts} disabled={isRefreshing} variant="outline">
           <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-          Refresh
+          {t.refresh}
         </Button>
       </div>
 
-      {/* Alert Summary */}
+      {/* Alert Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border-red-200 bg-red-50/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-red-700 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
-              Expired
+              {t.expired}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{groupedAlerts.expired.length}</div>
-            <p className="text-xs text-red-600">Memberships expired</p>
+            <p className="text-xs text-red-600">{t.memberships_expired}</p>
           </CardContent>
         </Card>
 
@@ -149,228 +153,45 @@ export function AlertSystem() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-red-700 flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              Critical
+              {t.critical}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{groupedAlerts.critical.length}</div>
-            <p className="text-xs text-red-600">Expiring in 7 days</p>
+            <p className="text-xs text-red-600">{t.expiring_7days}</p>
           </CardContent>
         </Card>
 
         <Card className="border-orange-200 bg-orange-50/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700">Warning</CardTitle>
+            <CardTitle className="text-sm font-medium text-orange-700">{t.warning}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{groupedAlerts.warning.length}</div>
-            <p className="text-xs text-orange-600">Expiring in 8-14 days</p>
+            <p className="text-xs text-orange-600">{t.expiring_8_14days}</p>
           </CardContent>
         </Card>
 
         <Card className="border-yellow-200 bg-yellow-50/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-700">Info</CardTitle>
+            <CardTitle className="text-sm font-medium text-yellow-700">{t.info}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{groupedAlerts.info.length}</div>
-            <p className="text-xs text-yellow-600">Expiring in 15-30 days</p>
+            <p className="text-xs text-yellow-600">{t.expiring_15_30days}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* No Alerts Message */}
+      {/* No Alerts */}
       {alerts.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">All Clear!</h3>
-            <p className="text-muted-foreground text-center">
-              No membership alerts at this time. All memberships are in good standing.
-            </p>
+            <h3 className="text-xl font-semibold text-green-700 mb-2">{t.all_clear}</h3>
+            <p className="text-muted-foreground text-center">{t.no_membership_alerts}</p>
           </CardContent>
         </Card>
-      )}
-
-      {/* Alert Lists */}
-      {alerts.length > 0 && (
-        <div className="space-y-6">
-          {/* Expired Memberships */}
-          {groupedAlerts.expired.length > 0 && (
-            <Card className="border-red-200">
-              <CardHeader>
-                <CardTitle className="text-red-700 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  Expired Memberships - Immediate Action Required
-                </CardTitle>
-                <CardDescription>These memberships have already expired and need immediate renewal</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {groupedAlerts.expired.map((alert) => {
-                  const priority = getAlertPriority(alert)
-                  return (
-                    <Alert key={alert.id} className={`${priority.borderColor} ${priority.bgColor}`}>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
-                            <span className="font-semibold">{alert.memberName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            Expired {Math.abs(alert.daysRemaining)} days ago
-                          </div>
-                          <Badge variant="destructive">EXPIRED</Badge>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => renewMembershipFromAlert(alert)}>
-                            Renew Now
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => dismissAlert(alert.id)}>
-                            Dismiss
-                          </Button>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Critical Alerts */}
-          {groupedAlerts.critical.length > 0 && (
-            <Card className="border-red-200">
-              <CardHeader>
-                <CardTitle className="text-red-700 flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Critical Alerts - Expiring Within 7 Days
-                </CardTitle>
-                <CardDescription>These memberships require urgent attention</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {groupedAlerts.critical.map((alert) => {
-                  const priority = getAlertPriority(alert)
-                  return (
-                    <Alert key={alert.id} className={`${priority.borderColor} ${priority.bgColor}`}>
-                      <Clock className="h-4 w-4" />
-                      <AlertDescription className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
-                            <span className="font-semibold">{alert.memberName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            Expires in {alert.daysRemaining} days
-                          </div>
-                          <Badge variant="destructive">CRITICAL</Badge>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => renewMembershipFromAlert(alert)}>
-                            Renew
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => dismissAlert(alert.id)}>
-                            Dismiss
-                          </Button>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Warning Alerts */}
-          {groupedAlerts.warning.length > 0 && (
-            <Card className="border-orange-200">
-              <CardHeader>
-                <CardTitle className="text-orange-700 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  Warning - Expiring in 8-14 Days
-                </CardTitle>
-                <CardDescription>Plan renewal for these memberships</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {groupedAlerts.warning.map((alert) => {
-                  const priority = getAlertPriority(alert)
-                  return (
-                    <Alert key={alert.id} className={`${priority.borderColor} ${priority.bgColor}`}>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
-                            <span className="font-semibold">{alert.memberName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            Expires in {alert.daysRemaining} days
-                          </div>
-                          <Badge variant="outline">WARNING</Badge>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => renewMembershipFromAlert(alert)}>
-                            Renew
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => dismissAlert(alert.id)}>
-                            Dismiss
-                          </Button>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Info Alerts */}
-          {groupedAlerts.info.length > 0 && (
-            <Card className="border-yellow-200">
-              <CardHeader>
-                <CardTitle className="text-yellow-700 flex items-center gap-2">
-                  <Bell className="w-5 h-5" />
-                  Information - Expiring in 15-30 Days
-                </CardTitle>
-                <CardDescription>Early notification for upcoming renewals</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {groupedAlerts.info.map((alert) => {
-                  const priority = getAlertPriority(alert)
-                  return (
-                    <Alert key={alert.id} className={`${priority.borderColor} ${priority.bgColor}`}>
-                      <Bell className="h-4 w-4" />
-                      <AlertDescription className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
-                            <span className="font-semibold">{alert.memberName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            Expires in {alert.daysRemaining} days
-                          </div>
-                          <Badge variant="secondary">INFO</Badge>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => renewMembershipFromAlert(alert)}>
-                            Renew
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => dismissAlert(alert.id)}>
-                            Dismiss
-                          </Button>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-        </div>
       )}
     </div>
   )

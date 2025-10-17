@@ -1,15 +1,26 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { logout } from "@/lib/auth"
+import { logout, getAdminLanguage, setAdminLanguage } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { LayoutDashboard, Users, Bell, Calendar, UserPlus, Settings, Menu, LogOut, BarChart3 } from "lucide-react"
+import { translations } from "@/lib/language"
+import {
+  LayoutDashboard,
+  Users,
+  Bell,
+  Calendar,
+  UserPlus,
+  Settings,
+  Menu,
+  LogOut,
+  BarChart3,
+  Globe,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface AdminLayoutProps {
@@ -22,84 +33,79 @@ export function AdminLayout({ children, alertCount = 0 }: AdminLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
 
+  // ✅ Load language from cookie on mount
+  const [language, setLanguage] = useState<"en" | "am">("en")
+  const [mounted, setMounted] = useState(false)
+  const t = translations[language]
+  
+  useEffect(() => {
+    const lang = getAdminLanguage()
+    setLanguage(lang)
+    setMounted(true)
+  }, [])
+  
+  if (!mounted) return null  // avoid server/client mismatch
+  
   const navigation = [
-    {
-      name: "Dashboard",
-      href: "/admin",
-      icon: LayoutDashboard,
-      current: pathname === "/admin",
-    },
-    {
-      name: "Members",
-      href: "/admin/members",
-      icon: Users,
-      current: pathname === "/admin/members",
-    },
-    {
-      name: "Alerts",
-      href: "/admin/alerts",
-      icon: Bell,
-      current: pathname === "/admin/alerts",
-      badge: alertCount > 0 ? alertCount : undefined,
-    },
-    {
-      name: "Membership Tracking",
-      href: "/admin/tracking",
-      icon: Calendar,
-      current: pathname === "/admin/tracking",
-    },
-    {
-      name: "Add Member",
-      href: "/admin/register",
-      icon: UserPlus,
-      current: pathname === "/admin/register",
-    },
-    {
-      name: "Reports",
-      href: "/admin/reports",
-      icon: BarChart3,
-      current: pathname === "/admin/reports",
-    },
-    {
-      name: "Settings",
-      href: "/admin/settings",
-      icon: Settings,
-      current: pathname === "/admin/settings",
-    },
+    { name: t.dashboard, href: "/admin", icon: LayoutDashboard },
+    { name: t.members, href: "/admin/members", icon: Users },
+    { name: t.alerts, href: "/admin/alerts", icon: Bell, badge: alertCount > 0 ? alertCount : undefined },
+    { name: t.tracking, href: "/admin/tracking", icon: Calendar },
+    { name: t.addMember, href: "/admin/register", icon: UserPlus },
+    { name: t.reports, href: "/admin/reports", icon: BarChart3 },
+    { name: t.settings, href: "/admin/settings", icon: Settings },
   ]
+
+  const handleToggleLanguage = () => {
+    const newLang = language === "en" ? "am" : "en"
+    setLanguage(newLang)
+    setAdminLanguage(newLang) // ✅ persist in cookie
+  }
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="flex h-16 shrink-0 items-center border-b px-6">
-        <h1 className="text-xl font-bold text-primary">GYM Track Admin</h1>
+        <h1 className="text-xl font-bold text-primary">{t.title}</h1>
       </div>
 
       {/* Navigation */}
       <nav className="flex flex-1 flex-col gap-y-7 px-6 py-4">
         <ul role="list" className="flex flex-1 flex-col gap-y-1">
-          {navigation.map((item) => (
-            <li key={item.name}>
-              <Link
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors",
-                  item.current
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                )}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                <span className="flex-1">{item.name}</span>
-                {item.badge && (
-                  <Badge variant="destructive" className="ml-auto">
-                    {item.badge}
-                  </Badge>
-                )}
-              </Link>
-            </li>
-          ))}
+          {navigation.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <li key={item.name}>
+                <Link
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className="flex-1">{item.name}</span>
+                  {item.badge && (
+                    <Badge variant="destructive" className="ml-auto">{item.badge}</Badge>
+                  )}
+                </Link>
+              </li>
+            )
+          })}
+
+          {/* Language toggle as nav item */}
+          <li>
+            <button
+              onClick={handleToggleLanguage}
+              className="w-full group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors text-muted-foreground hover:text-foreground hover:bg-muted"
+            >
+              <Globe className="h-5 w-5 shrink-0" />
+              <span className="flex-1">{language === "en" ? "Amharic" : "English"}</span>
+            </button>
+          </li>
         </ul>
 
         {/* Logout */}
@@ -113,7 +119,7 @@ export function AdminLayout({ children, alertCount = 0 }: AdminLayoutProps) {
             }}
           >
             <LogOut className="h-5 w-5 mr-3" />
-            Logout
+            {t.logout}
           </Button>
         </div>
       </nav>
@@ -147,7 +153,7 @@ export function AdminLayout({ children, alertCount = 0 }: AdminLayoutProps) {
               </Button>
             </SheetTrigger>
           </Sheet>
-          <div className="flex-1 text-sm font-semibold leading-6">GYM Track Admin</div>
+          <div className="flex-1 text-sm font-semibold leading-6">{t.title}</div>
         </div>
 
         {/* Page content */}

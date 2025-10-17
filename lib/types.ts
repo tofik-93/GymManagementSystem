@@ -15,6 +15,7 @@ export interface Member {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  membershipTypeAmount : number
 }
 export interface GymSettings {
   gymName: string
@@ -46,8 +47,10 @@ export interface Admin {
   role: "admin" | "manager"
   createdAt: string
   password: string
-  gymId : string
+  gymId: string
+  language: "en" | "am"  
 }
+
 
 export interface DashboardStats {
   totalMembers: number

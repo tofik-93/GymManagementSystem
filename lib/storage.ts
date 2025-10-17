@@ -229,35 +229,36 @@ export const getAdmins = async (): Promise<Admin[]> => {
 // ------------------------
 // Dashboard Stats
 // ------------------------
-export const getDashboardStats = async (): Promise<DashboardStats> => {
-  const gymId = getGymId()
-  const members = await getMembers()
-  const alerts = await getAlerts()
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const members: Member[] = await getMembers()
 
-  const today = new Date()
-  const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const activeMembers = members.filter((m) => m.isActive)
-  const expiredMembers = alerts.filter((a) => a.alertType === "expired")
-  const expiringMembers = alerts.filter((a) => a.alertType === "expiring")
-  const newMembersThisMonth = members.filter((m) => new Date(m.joinDate) >= thisMonth)
+  const totalMembers = members.length
+  const activeMembers = members.filter((m) => m.isActive).length
+  const expiredMembers = members.filter((m) => new Date(m.membershipEndDate) < now).length
+  const expiringMembers = members.filter((m) => {
+    const end = new Date(m.membershipEndDate)
+    const daysRemaining = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    return daysRemaining > 0 && daysRemaining <= 30
+  }).length
 
-  const monthlyRevenue = activeMembers.reduce((total, member) => {
-    const rate =
-      member.membershipType === "monthly"
-        ? 50
-        : member.membershipType === "quarterly"
-        ? 40
-        : 35
-    return total + rate
-  }, 0)
+  // ✅ Sum membershipTypeAmount for active members only
+  const monthlyRevenue = members
+    .filter((m) => m.isActive)
+    .reduce((total, m) => total + (m.membershipTypeAmount || 0), 0)
+
+  const newMembersThisMonth = members.filter(
+    (m) => new Date(m.joinDate) >= startOfMonth
+  ).length
 
   return {
-    totalMembers: members.length,
-    activeMembers: activeMembers.length,
-    expiredMembers: expiredMembers.length,
-    expiringMembers: expiringMembers.length,
+    totalMembers,
+    activeMembers,
+    expiredMembers,
+    expiringMembers,
     monthlyRevenue,
-    newMembersThisMonth: newMembersThisMonth.length,
+    newMembersThisMonth,
   }
 }

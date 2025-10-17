@@ -8,6 +8,8 @@ import { getMembers, getDashboardStats, getSettings } from "@/lib/storage"
 import type { Member, DashboardStats, GymSettings } from "@/lib/types"
 import { BarChart3, TrendingUp, Users, Calendar, Download, RefreshCw } from "lucide-react"
 import jsPDF from "jspdf"
+import { getAdminLanguage } from "@/lib/auth"
+import { translations } from "@/lib/language"
 
 export default function ReportsPage() {
   const [members, setMembers] = useState<Member[]>([])
@@ -21,6 +23,8 @@ export default function ReportsPage() {
   })
   const [settings, setSettings] = useState<GymSettings | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [language, setLanguage] = useState<"en" | "am">(getAdminLanguage())
+  const t = translations[language]
 
   useEffect(() => {
     loadReportData()
@@ -43,7 +47,23 @@ export default function ReportsPage() {
     await loadReportData()
     setIsRefreshing(false)
   }
-
+  const getRevenueByMembershipType = () => {
+    const monthlyRevenue = members
+      .filter((m) => m.membershipType === "monthly")
+      .reduce((sum, m) => sum + (m.membershipTypeAmount || 0), 0)
+  
+    const quarterlyRevenue = members
+      .filter((m) => m.membershipType === "quarterly")
+      .reduce((sum, m) => sum + (m.membershipTypeAmount || 0), 0)
+  
+    const yearlyRevenue = members
+      .filter((m) => m.membershipType === "yearly")
+      .reduce((sum, m) => sum + (m.membershipTypeAmount || 0), 0)
+  
+    return { monthlyRevenue, quarterlyRevenue, yearlyRevenue }
+  }
+  const { monthlyRevenue, quarterlyRevenue, yearlyRevenue } = getRevenueByMembershipType()
+  
   const getMembershipTypeStats = () => {
     const monthly = members.filter((m) => m.membershipType === "monthly").length
     const quarterly = members.filter((m) => m.membershipType === "quarterly").length
@@ -54,17 +74,15 @@ export default function ReportsPage() {
   const getJoinTrends = () => {
     const last6Months = []
     const today = new Date()
-
     for (let i = 5; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
-      const monthName = date.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+      const monthName = date.toLocaleDateString(language === "en" ? "en-US" : "am-ET", { month: "short", year: "numeric" })
       const count = members.filter((m) => {
         const joinDate = new Date(m.joinDate)
         return joinDate.getMonth() === date.getMonth() && joinDate.getFullYear() === date.getFullYear()
       }).length
       last6Months.push({ month: monthName, count })
     }
-
     return last6Months
   }
 
@@ -78,36 +96,34 @@ export default function ReportsPage() {
   const exportReportDataToPDF = () => {
     const pdf = new jsPDF("p", "mm", "a4")
     let y = 10
-
     pdf.setFontSize(16)
-    pdf.text("Gym Report", 105, y, { align: "center" })
+    pdf.text(t.gym_report, 105, y, { align: "center" })
     y += 10
-
     pdf.setFontSize(12)
-    pdf.text(`Total Members: ${stats.totalMembers}`, 10, y); y += 7
-    pdf.text(`Active Members: ${stats.activeMembers}`, 10, y); y += 7
-    pdf.text(`Expiring Members: ${stats.expiringMembers}`, 10, y); y += 7
-    pdf.text(`Expired Members: ${stats.expiredMembers}`, 10, y); y += 7
-    pdf.text(`New Members This Month: ${stats.newMembersThisMonth}`, 10, y); y += 10
+    pdf.text(`${t.total_members}: ${stats.totalMembers}`, 10, y); y += 7
+    pdf.text(`${t.active_members}: ${stats.activeMembers}`, 10, y); y += 7
+    pdf.text(`${t.expiring_members}: ${stats.expiringMembers}`, 10, y); y += 7
+    pdf.text(`${t.expired_members}: ${stats.expiredMembers}`, 10, y); y += 7
+    pdf.text(`${t.new_members_this_month}: ${stats.newMembersThisMonth}`, 10, y); y += 10
 
-    pdf.text("Membership Type Distribution:", 10, y); y += 7
-    pdf.text(`Monthly Members: ${membershipTypeStats.monthly}`, 10, y); y += 7
-    pdf.text(`Quarterly Members: ${membershipTypeStats.quarterly}`, 10, y); y += 7
-    pdf.text(`Yearly Members: ${membershipTypeStats.yearly}`, 10, y); y += 10
+    pdf.text(t.membership_distribution, 10, y); y += 7
+    pdf.text(`${t.monthly_members}: ${membershipTypeStats.monthly}`, 10, y); y += 7
+    pdf.text(`${t.quarterly_members}: ${membershipTypeStats.quarterly}`, 10, y); y += 7
+    pdf.text(`${t.yearly_members}: ${membershipTypeStats.yearly}`, 10, y); y += 10
 
-    pdf.text("Revenue Breakdown (ETB):", 10, y); y += 7
-    pdf.text(`Monthly Plans: ${membershipTypeStats.monthly * monthlyPrice}`, 10, y); y += 7
-    pdf.text(`Quarterly Plans: ${membershipTypeStats.quarterly * quarterlyPrice}`, 10, y); y += 7
-    pdf.text(`Yearly Plans: ${membershipTypeStats.yearly * yearlyPrice}`, 10, y); y += 7
-    pdf.text(`Total Revenue: ${stats.monthlyRevenue}`, 10, y); y += 10
+    pdf.text(t.revenue_breakdown, 10, y); y += 7
+    pdf.text(`${t.monthly_plans}: ${membershipTypeStats.monthly * monthlyPrice}`, 10, y); y += 7
+    pdf.text(`${t.quarterly_plans}: ${membershipTypeStats.quarterly * quarterlyPrice}`, 10, y); y += 7
+    pdf.text(`${t.yearly_plans}: ${membershipTypeStats.yearly * yearlyPrice}`, 10, y); y += 7
+    pdf.text(`${t.total_revenue}: ${stats.monthlyRevenue}`, 10, y); y += 10
 
-    pdf.text("Member Join Trends (last 6 months):", 10, y); y += 7
+    pdf.text(t.join_trends_last_6_months, 10, y); y += 7
     joinTrends.forEach((trend) => {
       pdf.text(`${trend.month}: ${trend.count}`, 10, y)
       y += 7
     })
 
-    pdf.save("Gym_Report.pdf")
+    pdf.save(`${t.gym_report}.pdf`)
   }
 
   return (
@@ -115,66 +131,66 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Reports & Analytics</h1>
-          <p className="text-muted-foreground mt-2">Comprehensive insights into gym performance and member analytics</p>
+          <h1 className="text-3xl font-bold text-foreground">{t.reports_analytics}</h1>
+          <p className="text-muted-foreground mt-2">{t.reports_analytics_desc}</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={refreshReports} disabled={isRefreshing} variant="outline">
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} /> Refresh
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} /> {t.refresh}
           </Button>
           <Button onClick={exportReportDataToPDF} variant="outline">
-            <Download className="w-4 h-4 mr-2" /> Export Report
+            <Download className="w-4 h-4 mr-2" /> {t.export_report}
           </Button>
         </div>
       </div>
 
-      {/* Key Metrics Overview */}
+      {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.total_revenue}</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">ETB {stats.monthlyRevenue}</div>
-            <p className="text-xs text-muted-foreground">Monthly recurring revenue</p>
+            <p className="text-xs text-muted-foreground">{t.monthly_recurring_revenue}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Members</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.active_members}</CardTitle>
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{stats.activeMembers}</div>
-            <p className="text-xs text-muted-foreground">Currently active memberships</p>
+            <p className="text-xs text-muted-foreground">{t.currently_active_memberships}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.growth_rate}</CardTitle>
             <BarChart3 className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
               {stats.totalMembers > 0 ? Math.round((stats.newMembersThisMonth / stats.totalMembers) * 100) : 0}%
             </div>
-            <p className="text-xs text-muted-foreground">New members this month</p>
+            <p className="text-xs text-muted-foreground">{t.new_members_this_month}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Retention Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.retention_rate}</CardTitle>
             <Calendar className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
               {stats.totalMembers > 0 ? Math.round((stats.activeMembers / stats.totalMembers) * 100) : 0}%
             </div>
-            <p className="text-xs text-muted-foreground">Active vs total members</p>
+            <p className="text-xs text-muted-foreground">{t.active_vs_total_members}</p>
           </CardContent>
         </Card>
       </div>
@@ -182,24 +198,24 @@ export default function ReportsPage() {
       {/* Membership Type Distribution */}
       <Card>
         <CardHeader>
-          <CardTitle>Membership Type Distribution</CardTitle>
-          <CardDescription>Breakdown of membership types across all members</CardDescription>
+          <CardTitle>{t.membership_type_distribution}</CardTitle>
+          <CardDescription>{t.membership_type_distribution_desc}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
               <div className="text-3xl font-bold text-blue-600">{membershipTypeStats.monthly}</div>
-              <div className="text-sm text-muted-foreground">Monthly Members</div>
+              <div className="text-sm text-muted-foreground">{t.monthly_members}</div>
               <Badge variant="outline" className="mt-2">ETB {monthlyPrice}/month</Badge>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600">{membershipTypeStats.quarterly}</div>
-              <div className="text-sm text-muted-foreground">Quarterly Members</div>
+              <div className="text-sm text-muted-foreground">{t.quarterly_members}</div>
               <Badge variant="outline" className="mt-2">ETB {quarterlyPrice}/month</Badge>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-purple-600">{membershipTypeStats.yearly}</div>
-              <div className="text-sm text-muted-foreground">Yearly Members</div>
+              <div className="text-sm text-muted-foreground">{t.yearly_members}</div>
               <Badge variant="outline" className="mt-2">ETB {yearlyPrice}/month</Badge>
             </div>
           </div>
@@ -207,92 +223,90 @@ export default function ReportsPage() {
       </Card>
 
       {/* Member Join Trends */}
-      {/* ...keep your existing join trends code unchanged... */}
-      {/* Member Join Trends */}
-<Card>
-  <CardHeader>
-    <CardTitle>Member Join Trends</CardTitle>
-    <CardDescription>New member registrations over the last 6 months</CardDescription>
-  </CardHeader>
-  <CardContent>
-    <div className="space-y-4">
-      {joinTrends.map((trend, index) => (
-        <div key={index} className="flex items-center justify-between">
-          <div className="font-medium">{trend.month}</div>
-          <div className="flex items-center gap-2">
-            <div className="w-32 bg-muted rounded-full h-2">
-              <div
-                className="bg-primary h-2 rounded-full"
-                style={{
-                  width: `${Math.max((trend.count / Math.max(...joinTrends.map((t) => t.count))) * 100, 5)}%`,
-                }}
-              />
-            </div>
-            <div className="text-sm font-medium w-8 text-right">{trend.count}</div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.member_join_trends}</CardTitle>
+          <CardDescription>{t.new_member_registrations_last_6_months}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {joinTrends.map((trend, index) => (
+              <div key={index} className="flex items-center justify-between">
+                <div className="font-medium">{trend.month}</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-32 bg-muted rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full"
+                      style={{
+                        width: `${Math.max((trend.count / Math.max(...joinTrends.map((t) => t.count))) * 100, 5)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="text-sm font-medium w-8 text-right">{trend.count}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      ))}
-    </div>
-  </CardContent>
-</Card>
-
-{/* Member Status Summary & Revenue */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <Card>
-    <CardHeader>
-      <CardTitle>Member Status Overview</CardTitle>
-      <CardDescription>Current status of all gym members</CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex justify-between items-center">
-        <span>Active Members</span>
-        <Badge variant="default">{stats.activeMembers}</Badge>
-      </div>
-      <div className="flex justify-between items-center">
-        <span>Expiring Soon</span>
-        <Badge variant="outline">{stats.expiringMembers}</Badge>
-      </div>
-      <div className="flex justify-between items-center">
-        <span>Expired Members</span>
-        <Badge variant="destructive">{stats.expiredMembers}</Badge>
-      </div>
-      <div className="flex justify-between items-center">
-        <span>New This Month</span>
-        <Badge variant="secondary">{stats.newMembersThisMonth}</Badge>
-      </div>
-    </CardContent>
-  </Card>
-
-  <Card>
-    <CardHeader>
-      <CardTitle>Revenue Breakdown</CardTitle>
-      <CardDescription>Monthly revenue by membership type</CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex justify-between items-center">
-        <span>Monthly Plans</span>
-        <span className="font-medium">ETB {membershipTypeStats.monthly * monthlyPrice}</span>
-      </div>
-      <div className="flex justify-between items-center">
-        <span>Quarterly Plans</span>
-        <span className="font-medium">ETB {membershipTypeStats.quarterly * quarterlyPrice}</span>
-      </div>
-      <div className="flex justify-between items-center">
-        <span>Yearly Plans</span>
-        <span className="font-medium">ETB {membershipTypeStats.yearly * yearlyPrice}</span>
-      </div>
-      <div className="border-t pt-4">
-        <div className="flex justify-between items-center font-bold">
-          <span>Total Monthly Revenue</span>
-          <span className="text-primary">ETB {stats.monthlyRevenue}</span>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-</div>
+        </CardContent>
+      </Card>
 
       {/* Member Status & Revenue */}
-     
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.member_status_overview}</CardTitle>
+            <CardDescription>{t.current_status_all_members}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span>{t.active_members}</span>
+              <Badge variant="default">{stats.activeMembers}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span>{t.expiring_soon}</span>
+              <Badge variant="outline">{stats.expiringMembers}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span>{t.expired_members}</span>
+              <Badge variant="destructive">{stats.expiredMembers}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span>{t.new_this_month}</span>
+              <Badge variant="secondary">{stats.newMembersThisMonth}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.revenue_breakdown}</CardTitle>
+            <CardDescription>{t.monthly_revenue_by_type}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+  <span>{t.monthly_plans}</span>
+  <span className="font-medium">ETB {monthlyRevenue}</span>
+</div>
+<div className="flex justify-between items-center">
+  <span>{t.quarterly_plans}</span>
+  <span className="font-medium">ETB {quarterlyRevenue}</span>
+</div>
+<div className="flex justify-between items-center">
+  <span>{t.yearly_plans}</span>
+  <span className="font-medium">ETB {yearlyRevenue}</span>
+</div>
+<div className="border-t pt-4">
+  <div className="flex justify-between items-center font-bold">
+    <span>{t.total_monthly_revenue}</span>
+    <span className="text-primary">
+      ETB {monthlyRevenue + quarterlyRevenue + yearlyRevenue}
+    </span>
+  </div>
+</div>
+
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
