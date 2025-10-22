@@ -36,7 +36,7 @@ const t = translations[language]
 // avoid server/client mismatch
 
 
-  if (!mounted) return null  
+ 
   useEffect(() => {
     const lang = getAdminLanguage()
     setLanguage(lang)
@@ -70,7 +70,7 @@ const t = translations[language]
     fetchMember()
     getSettings().then(setSettings)
   }, [params.id, router, toast, t])
-  
+  if (!mounted) return null 
   const handleEdit = (member: Member) => {
     setEditingMember(member)
     setIsEditModalOpen(true)
@@ -155,15 +155,15 @@ const renewMembership = () => {
 
     const progressPercentage = Math.min(Math.max((daysElapsed / totalDays) * 100, 0), 100)
 
-    let status = t.active
+    let status = "Active"
     if (!member.isActive) {
-      status = t.inactive
+      status = "Inactive"
     } else if (daysRemaining < 0) {
-      status = t.expired
+      status = "Expired"
     } else if (daysRemaining <= 7) {
-      status = t.critical
+      status = "Critical"
     } else if (daysRemaining <= 30) {
-      status = t.expiring_soon
+      status = "Expiring Soon"
     }
 
     return { progressPercentage, daysRemaining, status }
