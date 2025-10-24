@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,18 +15,17 @@ import { Settings, Bell, DollarSign, Shield, Save, Key } from "lucide-react"
 import { getAdminLanguage } from "@/lib/auth"
 import { Admin } from "@/lib/types"
 import { translations } from "@/lib/language"
+import { MembershipTypesManager } from "@/components/membership-types-manager"
 
 interface SettingsState {
   gymName: string
   adminEmail: string
   alertDays: number
-  monthlyPrice: number
-  quarterlyPrice: number
-  yearlyPrice: number
   emailNotifications: boolean
   smsNotifications: boolean
   autoRenewal: boolean
   memberLimit: number
+  membershipTypes: any[] // This will be managed by the MembershipTypesManager component
 }
 
 export default function SettingsPage() {
@@ -45,13 +45,11 @@ export default function SettingsPage() {
     gymName: "",
     adminEmail: "",
     alertDays: 30,
-    monthlyPrice: 50,
-    quarterlyPrice: 40,
-    yearlyPrice: 35,
     emailNotifications: true,
     smsNotifications: false,
     autoRenewal: true,
     memberLimit: 500,
+    membershipTypes: [],
   })
 
   const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null)
@@ -77,15 +75,15 @@ export default function SettingsPage() {
     try {
       await saveSettings(settings)
       toast({
-        title: t.settings_saved,
-        description: t.settings_saved_desc,
+        title: "Settings Saved",
+        description: "Your settings have been saved successfully",
         variant: "default",
       })
       setShowSuccessModal(true)
     } catch {
       toast({
         title: t.error,
-        description: t.settings_save_error,
+        description: "Failed to save settings",
         variant: "destructive",
       })
     }
@@ -98,7 +96,7 @@ export default function SettingsPage() {
 
     if (!showNewPasswordFields) {
       if (currentPassword !== currentAdmin.password) {
-        setPasswordError(t.current_password_incorrect)
+        setPasswordError("Current password is incorrect")
         return
       }
       setShowNewPasswordFields(true)
@@ -106,13 +104,13 @@ export default function SettingsPage() {
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError(t.new_password_mismatch)
+      setPasswordError("New passwords do not match")
       return
     }
 
     try {
       await updateAdminPassword(currentAdmin.id, newPassword)
-      setPasswordSuccess(t.password_changed)
+      setPasswordSuccess("Password changed successfully")
       setShowPasswordModal(false)
       setShowNewPasswordFields(false)
       setCurrentPassword("")
@@ -120,7 +118,7 @@ export default function SettingsPage() {
       setConfirmPassword("")
       setCurrentAdmin((prev) => (prev ? { ...prev, password: newPassword } : prev))
     } catch {
-      setPasswordError(t.password_update_failed)
+      setPasswordError("Failed to update password")
     }
   }
 
@@ -133,13 +131,14 @@ export default function SettingsPage() {
   }, [])
 
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={["manager"]}>
+      <div className="space-y-6">
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-card rounded-md p-6 w-80 relative shadow-lg">
             <h3 className="text-lg font-bold mb-4">{t.settings_updated}</h3>
-            <p className="text-sm mb-4">{t.settings_updated_desc}</p>
+            <p className="text-sm mb-4">Your settings have been updated successfully</p>
             <Button onClick={() => setShowSuccessModal(false)} className="w-full">
               {t.close}
             </Button>
@@ -252,7 +251,7 @@ export default function SettingsPage() {
             <CardTitle className="flex items-center gap-2">
               <Bell className="w-5 h-5" /> {t.notification_settings}
             </CardTitle>
-            <CardDescription>{t.notification_settings_desc}</CardDescription>
+            <CardDescription>Configure notification preferences</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -268,7 +267,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>{t.email_notifications}</Label>
-                <p className="text-sm text-muted-foreground">{t.email_notifications_desc}</p>
+                <p className="text-sm text-muted-foreground">Send email notifications for membership alerts</p>
               </div>
               <Switch
                 checked={settings.emailNotifications}
@@ -278,7 +277,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>{t.sms_notifications}</Label>
-                <p className="text-sm text-muted-foreground">{t.sms_notifications_desc}</p>
+                <p className="text-sm text-muted-foreground">Send SMS notifications for membership alerts</p>
               </div>
               <Switch
                 checked={settings.smsNotifications}
@@ -288,44 +287,10 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Pricing Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" /> {t.pricing_settings}
-            </CardTitle>
-            <CardDescription>{t.pricing_settings_desc}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="monthlyPrice">{t.monthly_membership}</Label>
-              <Input
-                id="monthlyPrice"
-                type="number"
-                value={settings.monthlyPrice}
-                onChange={(e) => handleInputChange("monthlyPrice", Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="quarterlyPrice">{t.quarterly_membership}</Label>
-              <Input
-                id="quarterlyPrice"
-                type="number"
-                value={settings.quarterlyPrice}
-                onChange={(e) => handleInputChange("quarterlyPrice", Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="yearlyPrice">{t.yearly_membership}</Label>
-              <Input
-                id="yearlyPrice"
-                type="number"
-                value={settings.yearlyPrice}
-                onChange={(e) => handleInputChange("yearlyPrice", Number(e.target.value))}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Membership Types Management */}
+        <div className="lg:col-span-2">
+          <MembershipTypesManager />
+        </div>
 
         {/* System Settings */}
         <Card>
@@ -333,13 +298,13 @@ export default function SettingsPage() {
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" /> {t.system_settings}
             </CardTitle>
-            <CardDescription>{t.system_settings_desc}</CardDescription>
+            <CardDescription>System configuration and status</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>{t.auto_renewal}</Label>
-                <p className="text-sm text-muted-foreground">{t.auto_renewal_desc}</p>
+                <p className="text-sm text-muted-foreground">Automatically renew memberships when they expire</p>
               </div>
               <Switch
                 checked={settings.autoRenewal}
@@ -350,9 +315,9 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label>{t.system_status}</Label>
               <div className="flex gap-2">
-                <Badge variant="default">{t.online}</Badge>
-                <Badge variant="secondary">{t.database_connected}</Badge>
-                <Badge variant="outline">{t.alerts_active}</Badge>
+                <Badge variant="default">Online</Badge>
+                <Badge variant="secondary">Database Connected</Badge>
+                <Badge variant="outline">Alerts Active</Badge>
               </div>
             </div>
           </CardContent>
@@ -371,5 +336,6 @@ export default function SettingsPage() {
         </Button>
       </div>
     </div>
+    </RoleGuard>
   )
 }

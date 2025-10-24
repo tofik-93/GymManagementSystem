@@ -9,19 +9,21 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { saveMember, getSettings } from "@/lib/storage"
-import type { Member, GymSettings } from "@/lib/types"
+import { saveMember, getSettings, getMembershipTypes } from "@/lib/storage"
+import type { Member, GymSettings, MembershipType } from "@/lib/types"
 import { Camera, User } from "lucide-react"
 import { translations } from "@/lib/language"
-import { getAdminLanguage } from "@/lib/auth"
+import { getAdminLanguage, getCurrentAdmin } from "@/lib/auth"
+
 
 export function MemberRegistrationForm() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [settings, setSettings] = useState<GymSettings | null>(null)
+  const [membershipTypes, setMembershipTypes] = useState<MembershipType[]>([])
   const [language, setLanguage] = useState<"en" | "am">("en")
-
+  const [currentAdmin, setCurrentAdmin] = useState<any>(null)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -38,6 +40,9 @@ export function MemberRegistrationForm() {
     const lang = getAdminLanguage()
     setLanguage(lang)
     getSettings().then(setSettings)
+    getMembershipTypes().then(setMembershipTypes)
+    const admin = getCurrentAdmin()
+  setCurrentAdmin(admin)
   }, [])
 
   const t = translations[language]
@@ -59,23 +64,19 @@ export function MemberRegistrationForm() {
     }
   }
 
-  const calculateMembershipEndDate = (startDate: string, type: string): string => {
+  const calculateMembershipEndDate = (startDate: string, membershipTypeId: string): string => {
     const start = new Date(startDate)
-    const end = new Date(start)
-
-    switch (type) {
-      case "monthly":
-        end.setMonth(end.getMonth() + 1)
-        break
-      case "quarterly":
-        end.setMonth(end.getMonth() + 3)
-        break
-      case "yearly":
-        end.setFullYear(end.getFullYear() + 1)
-        break
+    const membershipType = membershipTypes.find(type => type.id === membershipTypeId)
+    
+    if (!membershipType) {
+      // Fallback to 30 days if type not found
+      const end = new Date(start)
+      end.setDate(end.getDate() + 30)
+      return end.toISOString().split("T")[0]
     }
 
-    end.setDate(end.getDate() - 1)
+    const end = new Date(start)
+    end.setDate(end.getDate() + membershipType.duration)
     return end.toISOString().split("T")[0]
   }
 
@@ -95,18 +96,9 @@ export function MemberRegistrationForm() {
 
 // ✅ Determine membershipTypeAmount based on selected type
 let membershipTypeAmount = 0
-if (settings) {
-  switch (formData.membershipType) {
-    case "monthly":
-      membershipTypeAmount = settings.monthlyPrice
-      break
-    case "quarterly":
-      membershipTypeAmount = settings.quarterlyPrice
-      break
-    case "yearly":
-      membershipTypeAmount = settings.yearlyPrice
-      break
-  }
+const selectedMembershipType = membershipTypes.find(type => type.id === formData.membershipType)
+if (selectedMembershipType) {
+  membershipTypeAmount = selectedMembershipType.price
 }
 
       const today = new Date().toISOString().split("T")[0]
@@ -123,13 +115,16 @@ if (settings) {
         emergencyPhone: formData.emergencyPhone,
         photo: formData.photo,
         joinDate: today,
-        membershipType: formData.membershipType as "monthly" | "quarterly" | "yearly",
+        membershipType: formData.membershipType,
         membershipStartDate: today,
         membershipEndDate,
         membershipTypeAmount,
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        createdBy: currentAdmin?.username || "Unknown Admin",
+        lastEditedBy: currentAdmin?.username || "Unknown Admin",
+        gymId: currentAdmin?.gymId || "unknown"
       }
 
       await saveMember(newMember)
@@ -234,13 +229,11 @@ if (settings) {
                 <SelectValue placeholder={t.select_membership_type} />
               </SelectTrigger>
               <SelectContent>
-                {settings && (
-                  <>
-                    <SelectItem value="monthly">{t.monthly} - ETB {settings.monthlyPrice}</SelectItem>
-                    <SelectItem value="quarterly">{t.quarterly} - ETB {settings.quarterlyPrice}</SelectItem>
-                    <SelectItem value="yearly">{t.yearly} - ETB {settings.yearlyPrice}</SelectItem>
-                  </>
-                )}
+                {membershipTypes.filter(type => type.isActive).map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name} - ETB {type.price} ({type.duration} days)
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

@@ -14,9 +14,10 @@ import { ArrowLeft, Edit, Calendar, Phone, Mail, MapPin, User, AlertTriangle, Re
 import { useToast } from "@/hooks/use-toast"
 import { MemberEditModal } from "@/components/edit-member"
 import { translations } from "@/lib/language"
-import { getAdminLanguage } from "@/lib/auth"
+import { getAdminLanguage , getCurrentAdmin } from "@/lib/auth"
 import { getSettings } from "@/lib/storage"
 import type { GymSettings } from "@/lib/types"
+import { de } from "date-fns/locale"
 
 export default function MemberProfilePage() {
   const params = useParams()
@@ -110,27 +111,31 @@ const renewMembership = () => {
 
   // ✅ Determine membership amount based on type and settings
   let membershipTypeAmount = member.membershipTypeAmount || 0
-  if (settings) {
-    switch (member.membershipType) {
-      case "monthly":
-        membershipTypeAmount = settings.monthlyPrice
-        break
-      case "quarterly":
-        membershipTypeAmount = settings.quarterlyPrice
-        break
-      case "yearly":
-        membershipTypeAmount = settings.yearlyPrice
-        break
+
+  if (settings?.membershipTypes?.length) {
+    const matchedType = settings.membershipTypes.find(
+      (type) => type.name.toLowerCase() === member.membershipType.toLowerCase()
+    )
+
+    if (matchedType) {
+      membershipTypeAmount = matchedType.price
+    } else {
+      console.warn(`⚠️ No matching membership type found for "${member.membershipType}"`)
     }
   }
+
+  // ✅ Get the currently logged-in admin
+  const currentAdmin = getCurrentAdmin()
+  const lastEditedBy = currentAdmin?.username || "Unknown Admin"
 
   const updatedMember: Member = {
     ...member,
     membershipStartDate: today.toISOString().split("T")[0],
     membershipEndDate: newEndDate.toISOString().split("T")[0],
-    membershipTypeAmount, // ✅ Update here
+    membershipTypeAmount,
     isActive: true,
     updatedAt: new Date().toISOString(),
+    lastEditedBy, // ✅ Track who renewed the membership
   }
 
   saveMember(updatedMember)
@@ -140,6 +145,7 @@ const renewMembership = () => {
     description: `${member.name} ${t.membership_renewed_success}`,
   })
 }
+
 
 
   const getMembershipProgress = () => {
@@ -264,6 +270,16 @@ const renewMembership = () => {
   ? toEthiopianDate(new Date(member.joinDate))
   : new Date(member.joinDate).toLocaleDateString("en-US")}
 </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <span>{t.created_by}</span>
+              <span>{member.createdBy}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <User className="w-4 h-4 text-muted-foreground" /> 
+              <span>{t.last_edited_by}</span>
+              <span>{member.lastEditedBy}</span>
             </div>
           </CardContent>
         </Card>

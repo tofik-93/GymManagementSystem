@@ -181,6 +181,11 @@ function toEthiopianDate(date: Date): string {
                             : t.expires_today}
                       </p>
                       <p className="text-xs text-muted-foreground capitalize">{member.membershipType} {t.membership}</p>
+                      {member.lastEditedBy && (
+  <p className="text-xs text-muted-foreground italic mt-1">
+    {t.last_edited_by || "Last edited by"}: {member.lastEditedBy}
+  </p>
+)}
                     </div>
 
                     <div className="flex gap-2">

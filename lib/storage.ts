@@ -1,7 +1,7 @@
 import { ref, get, set, update, remove, push } from "firebase/database"
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage"
 import {rtdb ,storage} from "@/lib/firebaseConfig" 
-import type { Member, MembershipAlert, Admin, DashboardStats, GymSettings } from "./types"
+import type { Member, MembershipAlert, Admin, DashboardStats, GymSettings, MembershipType } from "./types"
 import { getGymId } from "@/lib/gymContext"
 import imageCompression from "browser-image-compression";
 // ------------------------
@@ -18,10 +18,12 @@ export const initializeDefaultAdmin = async () => {
       id: "admin-1",
       username: "admin",
       email: "admin@gym.com",
-      role: "admin",
+      role: "manager",
       createdAt: new Date().toISOString(),
       password : "1234",
       gymId : "1",
+      language: "en",
+      isActive: true,
     }
     await set(ref(rtdb, `admins/${defaultAdmin.id}`), defaultAdmin)
   }
@@ -55,7 +57,51 @@ export const getSettings = async (): Promise<GymSettings | null> => {
     const gymId = getGymId()
     const snapshot = await get(ref(rtdb, `gyms/${gymId}/settings`))
     if (!snapshot.exists()) return null
-    return snapshot.val() as GymSettings
+    const settings = snapshot.val() as GymSettings
+    
+    // Migrate old settings to new format if needed
+    if (settings && !settings.membershipTypes) {
+      const defaultMembershipTypes: MembershipType[] = [
+        {
+          id: "monthly",
+          name: "Monthly",
+          duration: 30,
+          price: (settings as any).monthlyPrice || 50,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "quarterly", 
+          name: "Quarterly",
+          duration: 90,
+          price: (settings as any).quarterlyPrice || 40,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "yearly",
+          name: "Yearly", 
+          duration: 365,
+          price: (settings as any).yearlyPrice || 35,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      ]
+      
+      const migratedSettings: GymSettings = {
+        ...settings,
+        membershipTypes: defaultMembershipTypes
+      }
+      
+      // Save migrated settings
+      await saveSettings(migratedSettings)
+      return migratedSettings
+    }
+    
+    return settings
   } catch (err) {
     console.error("Error fetching settings:", err)
     return null
@@ -218,12 +264,129 @@ export const updateAdminPassword = async (adminId: string, newPassword: string) 
 
 
 // ------------------------
+// Membership Type Operations
+// ------------------------
+export const getMembershipTypes = async (): Promise<MembershipType[]> => {
+  const settings = await getSettings()
+  return settings?.membershipTypes || []
+}
+
+export const addMembershipType = async (membershipType: Omit<MembershipType, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
+  const gymId = getGymId()
+  const settings = await getSettings()
+  if (!settings) throw new Error("Settings not found")
+  
+  const newMembershipType: MembershipType = {
+    ...membershipType,
+    id: `type-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  
+  const updatedSettings: GymSettings = {
+    ...settings,
+    membershipTypes: [...settings.membershipTypes, newMembershipType]
+  }
+  
+  await saveSettings(updatedSettings)
+}
+
+export const updateMembershipType = async (id: string, updates: Partial<Omit<MembershipType, 'id' | 'createdAt'>>): Promise<void> => {
+  const gymId = getGymId()
+  const settings = await getSettings()
+  if (!settings) throw new Error("Settings not found")
+  
+  const updatedMembershipTypes = settings.membershipTypes.map(type => 
+    type.id === id 
+      ? { ...type, ...updates, updatedAt: new Date().toISOString() }
+      : type
+  )
+  
+  const updatedSettings: GymSettings = {
+    ...settings,
+    membershipTypes: updatedMembershipTypes
+  }
+  
+  await saveSettings(updatedSettings)
+}
+
+export const deleteMembershipType = async (id: string): Promise<void> => {
+  const gymId = getGymId()
+  const settings = await getSettings()
+  if (!settings) throw new Error("Settings not found")
+  
+  // Check if any members are using this membership type
+  const members = await getMembers()
+  const membersUsingType = members.filter(member => member.membershipType === id)
+  
+  if (membersUsingType.length > 0) {
+    throw new Error(`Cannot delete membership type. ${membersUsingType.length} members are currently using this type.`)
+  }
+  
+  const updatedMembershipTypes = settings.membershipTypes.filter(type => type.id !== id)
+  
+  const updatedSettings: GymSettings = {
+    ...settings,
+    membershipTypes: updatedMembershipTypes
+  }
+  
+  await saveSettings(updatedSettings)
+}
+
+export const getMembershipTypeById = async (id: string): Promise<MembershipType | null> => {
+  const membershipTypes = await getMembershipTypes()
+  return membershipTypes.find(type => type.id === id) || null
+}
+
+// ------------------------
 // Admin Operations
 // ------------------------
 export const getAdmins = async (): Promise<Admin[]> => {
-
   const snapshot = await get(ref(rtdb, `admins`))
   return snapshot.exists() ? Object.values(snapshot.val()) as Admin[] : []
+}
+
+export const addStaff = async (staff: Omit<Admin, 'id' | 'createdAt'>): Promise<void> => {
+  const newStaff: Admin = {
+    ...staff,
+    id: `staff-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+  }
+  
+  await set(ref(rtdb, `admins/${newStaff.id}`), newStaff)
+}
+
+export const updateStaff = async (staffId: string, updates: Partial<Omit<Admin, 'id' | 'createdAt'>>): Promise<void> => {
+  const staffRef = ref(rtdb, `admins/${staffId}`)
+  await update(staffRef, { ...updates, updatedAt: new Date().toISOString() })
+}
+
+export const deleteStaff = async (staffId: string): Promise<void> => {
+  await remove(ref(rtdb, `admins/${staffId}`))
+}
+
+export const getStaffByGym = async (gymId: string): Promise<Admin[]> => {
+  const snapshot = await get(ref(rtdb, `admins`))
+  if (!snapshot.exists()) return []
+  
+  const admins = Object.values(snapshot.val()) as Admin[]
+  console.log(admins)
+  console.log(gymId)
+  return admins.filter(
+    (admin) => String(admin.gymId) === String(gymId) && admin.role === "staff"
+  )
+  
+}
+
+export const getManagersByGym = async (gymId: string): Promise<Admin[]> => {
+  const snapshot = await get(ref(rtdb, `admins`))
+  if (!snapshot.exists()) return []
+  
+  const admins = Object.values(snapshot.val()) as Admin[]
+  return admins.filter(
+    (admin) => String(admin.gymId) === String(gymId) && admin.role === "manager"
+  )
+  
 }
 
 // ------------------------

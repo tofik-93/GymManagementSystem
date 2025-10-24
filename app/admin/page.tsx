@@ -1,12 +1,28 @@
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DashboardStatsCards } from "@/components/dashboard-stats"
 import { MembersTable } from "@/components/members-table"
+import { RoleGuard } from "@/components/role-guard"
+import { getCurrentAdmin } from "@/lib/auth"
 import { ArrowLeft, UserPlus, Calendar, Bell } from "lucide-react"
 
 export default function AdminDashboard() {
+  const router = useRouter()
+
+  useEffect(() => {
+    const currentAdmin = getCurrentAdmin()
+    if (currentAdmin?.role === "staff") {
+      router.replace("/admin/staff-dashboard")
+    }
+  }, [router])
+
   return (
-    <div className="min-h-screen bg-background space-y-8">
+    <RoleGuard allowedRoles={["manager"]}>
+      <div className="min-h-screen bg-background space-y-8">
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
@@ -70,5 +86,6 @@ export default function AdminDashboard() {
         </section>
       </div>
     </div>
+    </RoleGuard>
   )
 }

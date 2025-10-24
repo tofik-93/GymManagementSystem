@@ -9,21 +9,32 @@ export interface Member {
   emergencyPhone: string
   photo?: string
   joinDate: string
-  membershipType: "monthly" | "quarterly" | "yearly"
+  membershipType: string // Changed to string to support dynamic types
   membershipStartDate: string
   membershipEndDate: string
   isActive: boolean
   createdAt: string
   updatedAt: string
   membershipTypeAmount : number
+  createdBy?: string
+  lastEditedBy?: string
+  gymId?: string
 }
+export interface MembershipType {
+  id: string
+  name: string
+  duration: number // Duration in days
+  price: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface GymSettings {
   gymName: string
   adminEmail: string
   alertDays: number
-  monthlyPrice: number
-  quarterlyPrice: number
-  yearlyPrice: number
+  membershipTypes: MembershipType[] // Dynamic membership types
   emailNotifications: boolean
   smsNotifications: boolean
   autoRenewal: boolean
@@ -44,11 +55,13 @@ export interface Admin {
   id: string
   username: string
   email: string
-  role: "admin" | "manager"
+  role: "manager" | "staff"
   createdAt: string
   password: string
   gymId: string
-  language: "en" | "am"  
+  language: "en" | "am"
+  isActive: boolean
+  createdBy?: string // ID of the manager who created this staff member
 }
 
 

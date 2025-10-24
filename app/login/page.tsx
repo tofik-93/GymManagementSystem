@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { setAuthenticated, isAuthenticated } from "@/lib/auth"
+import { setAuthenticated, isAuthenticated, setCurrentAdmin } from "@/lib/auth"
 import { setGymId } from "@/lib/gymContext"
 import { getAdmins } from "@/lib/storage"
 import { Eye, EyeOff, Lock, User, Dumbbell, Phone, Mail, X, Heart } from "lucide-react"
@@ -51,8 +51,16 @@ export default function LoginPage() {
       }
 
       if (foundAdmin) {
+        // Check if admin is active
+        if (!foundAdmin.isActive) {
+          setError("Your account has been deactivated. Please contact your manager.")
+          setLoading(false)
+          return
+        }
+
         setGymId(foundAdmin.gymId)
         setAuthenticated(true, foundAdmin.gymId)
+        setCurrentAdmin(foundAdmin)
         router.push("/")
       }
       

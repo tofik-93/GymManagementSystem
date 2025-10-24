@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { updateMember } from "@/lib/storage"
+import { updateMember, getMembershipTypes, getSettings } from "@/lib/storage"
 import { useToast } from "@/hooks/use-toast"
-import type { Member } from "@/lib/types"
+import type { Member, MembershipType, GymSettings } from "@/lib/types"
 import { translations } from "@/lib/language"
-import { getAdminLanguage, setAdminLanguage } from "@/lib/auth"
+import { getAdminLanguage, setAdminLanguage, getCurrentAdmin } from "@/lib/auth"  // ⚡ added getCurrentAdmin
 import { Globe } from "lucide-react"
-import { getSettings } from "@/lib/storage"
-import type { GymSettings } from "@/lib/types"
 
 interface MemberEditModalProps {
   member: Member | null
@@ -27,16 +25,23 @@ export function MemberEditModal({ member, open, onClose, onMemberUpdated }: Memb
   const [formData, setFormData] = useState<Member | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
 
-  // ✅ Language state
   const [language, setLanguage] = useState<"en" | "am">("en")
   const [mounted, setMounted] = useState(false)
-  const t = translations[language]
   const [settings, setSettings] = useState<GymSettings | null>(null)
+  const [membershipTypes, setMembershipTypes] = useState<MembershipType[]>([])
+
+  const [currentAdmin, setCurrentAdmin] = useState<any>(null) // ⚡ holds logged-in admin
+  const t = translations[language]
 
   useEffect(() => {
     getSettings().then(setSettings)
+    getMembershipTypes().then(setMembershipTypes)
+
+    // ⚡ Load logged-in admin info
+    const admin = getCurrentAdmin()
+    if (admin) setCurrentAdmin(admin)
   }, [])
-  
+
   useEffect(() => {
     setFormData(member)
   }, [member])
@@ -53,61 +58,42 @@ export function MemberEditModal({ member, open, onClose, onMemberUpdated }: Memb
     setFormData((prev) => (prev ? { ...prev, [field]: value } : prev))
   }
 
-  const handleMembershipChange = (newType: "monthly" | "quarterly" | "yearly") => {
+  const handleMembershipChange = (newTypeId: string) => {
     if (!formData) return
     const startDate = new Date(formData.membershipStartDate || new Date())
+    const membershipType = membershipTypes.find(type => type.id === newTypeId)
+    
+    if (!membershipType) return
+    
     const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + membershipType.duration)
   
-    // ✅ Set membership end date based on new type
-    switch (newType) {
-      case "monthly":
-        endDate.setMonth(startDate.getMonth() + 1)
-        break
-      case "quarterly":
-        endDate.setMonth(startDate.getMonth() + 3)
-        break
-      case "yearly":
-        endDate.setFullYear(startDate.getFullYear() + 1)
-        break
-    }
-  
-    // ✅ Determine membership amount based on settings
-    let membershipTypeAmount = formData.membershipTypeAmount || 0
-    if (settings) {
-      switch (newType) {
-        case "monthly":
-          membershipTypeAmount = settings.monthlyPrice
-          break
-        case "quarterly":
-          membershipTypeAmount = settings.quarterlyPrice
-          break
-        case "yearly":
-          membershipTypeAmount = settings.yearlyPrice
-          break
-      }
-    }
-  
-    // ✅ Update form data
     setFormData((prev) =>
       prev
         ? {
             ...prev,
-            membershipType: newType,
+            membershipType: newTypeId,
             membershipStartDate: startDate.toISOString(),
             membershipEndDate: endDate.toISOString(),
-            membershipTypeAmount, // ✅ updated here
+            membershipTypeAmount: membershipType.price,
           }
         : prev
     )
   }
-    
 
   const handleSave = async () => {
     if (!formData) return
     try {
-      await updateMember(formData.id, formData)
+      // ⚡ Attach lastEditedBy info
+      const updatedMember: Member = {
+        ...formData,
+        updatedAt: new Date().toISOString(),
+        lastEditedBy: currentAdmin?.username || currentAdmin?.email || "Unknown Admin",
+      }
+
+      await updateMember(formData.id, updatedMember)
       setShowSuccess(true)
-      onMemberUpdated(formData)
+      onMemberUpdated(updatedMember)
       onClose()
     } catch (error) {
       console.error(error)
@@ -178,17 +164,17 @@ export function MemberEditModal({ member, open, onClose, onMemberUpdated }: Memb
             <Label>{t.membershipType}</Label>
             <Select
               value={formData.membershipType}
-              onValueChange={(v) =>
-                handleMembershipChange(v as "monthly" | "quarterly" | "yearly")
-              }
+              onValueChange={handleMembershipChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder={t.selectType} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="monthly">{t.monthly}</SelectItem>
-                <SelectItem value="quarterly">{t.quarterly}</SelectItem>
-                <SelectItem value="yearly">{t.yearly}</SelectItem>
+                {membershipTypes.filter(type => type.isActive).map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name} - ETB {type.price} ({type.duration} days)
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

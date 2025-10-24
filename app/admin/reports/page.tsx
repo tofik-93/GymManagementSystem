@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -127,7 +128,8 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={["manager"]}>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -308,5 +310,6 @@ export default function ReportsPage() {
         </Card>
       </div>
     </div>
+    </RoleGuard>
   )
 }

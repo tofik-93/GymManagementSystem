@@ -1,10 +1,12 @@
 import Cookies from "js-cookie"
 import { setGymId } from "./gymContext"
+import type { Admin } from "./types"
 
 export const AUTH_KEY = "gym_auth"
 export const AUTH_EXPIRY_KEY = "gym_auth_expiry"
 export const GYM_KEY = "gym_id"
 export const LANGUAGE_KEY = "admin_language" // ✅ new cookie key
+export const CURRENT_ADMIN_KEY = "current_admin" // ✅ current admin data
 
 // ✅ Set gym ID with expiry
 export const setGymIdCookie = (gymId: string, durationHours = 2) => {
@@ -61,6 +63,27 @@ export const logout = () => {
   Cookies.remove(AUTH_EXPIRY_KEY)
   removeGymIdCookie()
   removeLanguageCookie()
+  removeCurrentAdmin()
+}
+
+// ✅ Set current admin data
+export const setCurrentAdmin = (admin: Admin, durationHours = 2) => {
+  Cookies.set(CURRENT_ADMIN_KEY, JSON.stringify(admin), { expires: durationHours / 24 })
+}
+
+// ✅ Get current admin data
+export const getCurrentAdmin = (): Admin | null => {
+  try {
+    const adminData = Cookies.get(CURRENT_ADMIN_KEY)
+    return adminData ? JSON.parse(adminData) : null
+  } catch {
+    return null
+  }
+}
+
+// ✅ Clear current admin
+export const removeCurrentAdmin = () => {
+  Cookies.remove(CURRENT_ADMIN_KEY)
 }
 
 // ✅ Clear gym ID

@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { logout, getAdminLanguage, setAdminLanguage } from "@/lib/auth"
+import { logout, getAdminLanguage, setAdminLanguage, getCurrentAdmin } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +20,7 @@ import {
   LogOut,
   BarChart3,
   Globe,
+  UserCog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -36,25 +37,49 @@ export function AdminLayout({ children, alertCount = 0 }: AdminLayoutProps) {
   // ✅ Load language from cookie on mount
   const [language, setLanguage] = useState<"en" | "am">("en")
   const [mounted, setMounted] = useState(false)
+  const [currentAdmin, setCurrentAdmin] = useState<any>(null)
   const t = translations[language]
   
   useEffect(() => {
     const lang = getAdminLanguage()
     setLanguage(lang)
+    const admin = getCurrentAdmin()
+    setCurrentAdmin(admin)
     setMounted(true)
   }, [])
   
   if (!mounted) return null  // avoid server/client mismatch
   
-  const navigation = [
-    { name: t.dashboard, href: "/admin", icon: LayoutDashboard },
-    { name: t.members, href: "/admin/members", icon: Users },
-    { name: t.alerts, href: "/admin/alerts", icon: Bell, badge: alertCount > 0 ? alertCount : undefined },
-    { name: t.tracking, href: "/admin/tracking", icon: Calendar },
-    { name: t.addMember, href: "/admin/register", icon: UserPlus },
-    { name: t.reports, href: "/admin/reports", icon: BarChart3 },
-    { name: t.settings, href: "/admin/settings", icon: Settings },
-  ]
+  // Role-based navigation
+  const getNavigation = () => {
+    const staffNavigation = [
+      { name: t.dashboard, href: "/admin/staff-dashboard", icon: LayoutDashboard },
+      { name: t.members, href: "/admin/members", icon: Users },
+      { name: t.alerts, href: "/admin/alerts", icon: Bell, badge: alertCount > 0 ? alertCount : undefined },
+      { name: t.tracking, href: "/admin/tracking", icon: Calendar },
+      { name: t.addMember, href: "/admin/register", icon: UserPlus },
+    ]
+
+    const managerNavigation = [
+      { name: t.dashboard, href: "/admin", icon: LayoutDashboard },
+      { name: t.members, href: "/admin/members", icon: Users },
+      { name: t.alerts, href: "/admin/alerts", icon: Bell, badge: alertCount > 0 ? alertCount : undefined },
+      { name: t.tracking, href: "/admin/tracking", icon: Calendar },
+      { name: t.addMember, href: "/admin/register", icon: UserPlus },
+      { name: t.reports, href: "/admin/reports", icon: BarChart3 },
+      { name: t.settings, href: "/admin/settings", icon: Settings },
+      { name: "Staff Management", href: "/admin/staff", icon: UserCog },
+    ]
+
+    // Return appropriate navigation based on role
+    if (currentAdmin?.role === "manager") {
+      return managerNavigation
+    } else {
+      return staffNavigation
+    }
+  }
+
+  const navigation = getNavigation()
 
   const handleToggleLanguage = () => {
     const newLang = language === "en" ? "am" : "en"
